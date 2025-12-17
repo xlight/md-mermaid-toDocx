@@ -481,6 +481,7 @@
         const langPicker = document.getElementById('langPicker');
         let debounceTimerPreview;
         let isSyncingScroll = false; // 防止循环触发
+        let isUpdatingPreview = false; // 防止预览更新时触发同步滚动
 
         // 初始化语言
         applyLanguage(currentLang);
@@ -531,7 +532,8 @@
 
         // 同步滚动函数
         function syncScroll(source, target) {
-            if (isSyncingScroll) return;
+            // 如果正在同步滚动或正在更新预览，则不执行
+            if (isSyncingScroll || isUpdatingPreview) return;
             isSyncingScroll = true;
 
             const sourceScrollPercentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
@@ -545,11 +547,17 @@
 
         // 为输入框和预览区域添加滚动事件监听
         combinedContentInput.addEventListener('scroll', () => {
-            syncScroll(combinedContentInput, documentPreviewDiv);
+            // 只有用户主动滚动编辑器时才同步到预览
+            if (!isUpdatingPreview) {
+                syncScroll(combinedContentInput, documentPreviewDiv);
+            }
         });
 
         documentPreviewDiv.addEventListener('scroll', () => {
-            syncScroll(documentPreviewDiv, combinedContentInput);
+            // 只有用户主动滚动预览时才同步到编辑器
+            if (!isUpdatingPreview) {
+                syncScroll(documentPreviewDiv, combinedContentInput);
+            }
         });
 
         function schedulePreviewUpdate() {
@@ -558,6 +566,15 @@
         }
 
         async function updateFullPreview() {
+            // 标记正在更新预览，防止触发同步滚动
+            isUpdatingPreview = true;
+            
+            // 保存编辑器当前的滚动位置
+            const editorScrollTop = combinedContentInput.scrollTop;
+            const editorScrollHeight = combinedContentInput.scrollHeight;
+            const editorClientHeight = combinedContentInput.clientHeight;
+            const editorScrollPercentage = editorScrollTop / (editorScrollHeight - editorClientHeight);
+            
             statusDiv.textContent = t('loadingDefault');
             documentPreviewDiv.innerHTML = '';
             let selectedFontFamily = fontPicker.value;
@@ -590,6 +607,26 @@
             }
             if (!documentStructure.length && rawContent.trim() === "") documentPreviewDiv.innerHTML = `<p><i>${t('previewPlaceholder')}</i></p>`;
             statusDiv.textContent = '';
+            
+            // 延迟恢复同步滚动，等待 DOM 更新完成
+            setTimeout(() => {
+                // 恢复编辑器的滚动位置（基于之前的百分比）
+                const newEditorScrollHeight = combinedContentInput.scrollHeight;
+                const newEditorClientHeight = combinedContentInput.clientHeight;
+                if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
+                    combinedContentInput.scrollTop = editorScrollPercentage * (newEditorScrollHeight - newEditorClientHeight);
+                }
+                
+                // 预览区域同步到编辑器位置
+                if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
+                    const previewScrollHeight = documentPreviewDiv.scrollHeight;
+                    const previewClientHeight = documentPreviewDiv.clientHeight;
+                    documentPreviewDiv.scrollTop = editorScrollPercentage * (previewScrollHeight - previewClientHeight);
+                }
+                
+                // 恢复同步滚动
+                isUpdatingPreview = false;
+            }, 100);
         }
 
         combinedContentInput.addEventListener('input', schedulePreviewUpdate);
