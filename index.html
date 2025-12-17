@@ -842,6 +842,54 @@
             return elements;
         }
 
+        // 从内容中提取文件名
+        function extractFileName(content) {
+            if (!content || !content.trim()) {
+                return 'document';
+            }
+            
+            // 尝试匹配第一个标题 (# 标题)
+            const headingMatch = content.match(/^#+\s+(.+)$/m);
+            if (headingMatch && headingMatch[1]) {
+                return sanitizeFileName(headingMatch[1].trim());
+            }
+            
+            // 如果没有标题，取第一行非空文本
+            const lines = content.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                // 跳过空行、代码块标记、分隔线等
+                if (trimmed && 
+                    !trimmed.startsWith('```') && 
+                    !trimmed.startsWith('---') && 
+                    !trimmed.startsWith('===') &&
+                    trimmed !== '***' &&
+                    trimmed !== '___') {
+                    return sanitizeFileName(trimmed);
+                }
+            }
+            
+            return 'document';
+        }
+        
+        // 清理文件名，移除非法字符
+        function sanitizeFileName(name) {
+            // 移除或替换文件名中的非法字符
+            let cleaned = name
+                .replace(/[<>:"/\\|?*]/g, '') // 移除 Windows 非法字符
+                .replace(/\s+/g, '_')          // 空格替换为下划线
+                .replace(/[^\u0000-\u007F\u4e00-\u9fa5]/g, '') // 保留 ASCII 和中文
+                .trim();
+            
+            // 限制长度
+            if (cleaned.length > 50) {
+                cleaned = cleaned.substring(0, 50);
+            }
+            
+            // 如果清理后为空，返回默认名称
+            return cleaned || 'document';
+        }
+
         generateDocxButton.addEventListener('click', async () => {
             generateDocxButton.disabled = true;
             statusDiv.textContent = t('generating');
@@ -851,7 +899,8 @@
 
             try {
                 const finalDocChildren = [];
-                const documentStructure = parseCombinedContentFromTextarea(combinedContentInput.value);
+                const rawContent = combinedContentInput.value;
+                const documentStructure = parseCombinedContentFromTextarea(rawContent);
 
                 for (const segment of documentStructure) {
                     if (segment.type === 'markdown' && segment.content.trim()) {
@@ -918,7 +967,11 @@
                     }]},
                 });
                 const blob = await docxGlobal.Packer.toBlob(fullDoc);
-                saveAs(blob, "markdown_mermaid_document.docx");
+                
+                // 从内容中提取文件名
+                const fileName = extractFileName(rawContent);
+                saveAs(blob, `${fileName}.docx`);
+                
                 statusDiv.textContent = t('success');
             } catch (e) { console.error("Error DOCX gen:", e, e.stack); statusDiv.textContent = `${t('error')}${e.message}`; }
             finally { generateDocxButton.disabled = false; }
