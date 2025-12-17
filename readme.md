@@ -1,6 +1,13 @@
 # Markdown & Mermaid to DOCX 转换器
 
+[![GitHub stars](https://img.shields.io/github/stars/xlight/md-mermaid-toDocx?style=social)](https://github.com/xlight/md-mermaid-toDocx/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/xlight/md-mermaid-toDocx?style=social)](https://github.com/xlight/md-mermaid-toDocx/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/xlight/md-mermaid-toDocx)](https://github.com/xlight/md-mermaid-toDocx/issues)
+[![GitHub license](https://img.shields.io/github/license/xlight/md-mermaid-toDocx)](https://github.com/xlight/md-mermaid-toDocx/blob/main/LICENSE)
+
 一个基于 Web 的在线工具，支持将 Markdown 文档和 Mermaid 图表转换为 DOCX 格式文件。提供实时预览和左右对照编辑功能。
+
+> **⭐ 如果这个项目对你有帮助，请点击右上角的 Star 支持一下！**
 
 ## ✨ 功能特性
 
@@ -18,9 +25,9 @@
 
 访问 GitHub Pages 部署的在线版本：
 
-```
-https://<your-username>.github.io/<repository-name>/
-```
+**🔗 [立即使用 https://xlight.github.io/md-mermaid-toDocx/](https://xlight.github.io/md-mermaid-toDocx/)**
+
+> 💡 提示：首次访问可能需要几秒钟加载 CDN 资源
 
 ## 💻 本地运行
 
@@ -165,6 +172,18 @@ mermaid.initialize({
 
 欢迎提交 Issue 和 Pull Request！
 
+### 如何贡献
+
+1. Fork 本项目
+2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交您的修改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开一个 Pull Request
+
+### ⭐ Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=xlight/md-mermaid-toDocx&type=Date)](https://star-history.com/#xlight/md-mermaid-toDocx&Date)
+
 ## 📄 许可证
 
 MIT License
@@ -184,4 +203,16 @@ MIT License
 
 ## 📮 联系方式
 
-如有问题或建议，欢迎提交 Issue。
+- 📧 提交 Issue：[https://github.com/xlight/md-mermaid-toDocx/issues](https://github.com/xlight/md-mermaid-toDocx/issues)
+- 💬 讨论：[https://github.com/xlight/md-mermaid-toDocx/discussions](https://github.com/xlight/md-mermaid-toDocx/discussions)
+- ⭐ 如果觉得项目不错，请给个 Star 支持一下！
+
+---
+
+<div align="center">
+
+Made with ❤️ by [xlight](https://github.com/xlight)
+
+⭐ **喜欢这个项目？给它一个 Star 吧！** ⭐
+
+</div>

@@ -43,6 +43,55 @@
             align-items: center;
             gap: 10px;
         }
+        
+        /* GitHub 链接样式 */
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background-color: #24292e;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+        
+        .github-link:hover {
+            background-color: #0366d6;
+        }
+        
+        .github-link svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        
+        .star-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background-color: #fafbfc;
+            color: #24292e;
+            border: 1px solid #e1e4e8;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .star-button:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5da;
+        }
+        
+        .star-button svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
 
         /* 编辑器和预览区域的容器 */
         .editor-preview-container {
@@ -256,6 +305,21 @@
             <h1 data-i18n="title">Markdown & Mermaid to DOCX</h1>
             
             <div class="toolbar-group">
+                <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="github-link" title="View on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                    </svg>
+                    <span data-i18n="viewOnGithub">GitHub</span>
+                </a>
+                <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="star-button" title="Star this project">
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path>
+                    </svg>
+                    <span data-i18n="starButton">Star</span>
+                </a>
+            </div>
+            
+            <div class="toolbar-group">
                 <label for="fontPicker" data-i18n="fontLabel">字体:</label>
                 <select id="fontPicker">
                     <optgroup data-i18n="chineseFonts" label="中文字体">
@@ -339,7 +403,9 @@
                 generating: '正在生成 DOCX...',
                 success: 'DOCX 已生成！',
                 error: '生成失败: ',
-                printPrompt: '请使用浏览器的打印功能 (Ctrl+P / Cmd+P)'
+                printPrompt: '请使用浏览器的打印功能 (Ctrl+P / Cmd+P)',
+                viewOnGithub: 'GitHub',
+                starButton: '加星'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
@@ -360,7 +426,9 @@
                 generating: 'Generating DOCX...',
                 success: 'DOCX generated!',
                 error: 'Generation failed: ',
-                printPrompt: 'Please use browser print function (Ctrl+P / Cmd+P)'
+                printPrompt: 'Please use browser print function (Ctrl+P / Cmd+P)',
+                viewOnGithub: 'GitHub',
+                starButton: 'Star'
             }
         };
 
