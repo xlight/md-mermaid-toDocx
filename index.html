@@ -7,19 +7,19 @@
     <title>Markdown and Mermaid to DOCX - Combined Editor</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: sans-serif; 
-            background-color: #f4f4f4; 
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f4;
             height: 100vh;
             overflow: hidden;
         }
-        .container { 
-            background-color: #fff; 
+        .container {
+            background-color: #fff;
             height: 100vh;
             display: flex;
             flex-direction: column;
         }
-        
+
         /* 顶部工具栏 */
         .toolbar {
             padding: 10px 15px;
@@ -31,19 +31,19 @@
             flex-wrap: wrap;
             flex-shrink: 0;
         }
-        
+
         .toolbar h1 {
             font-size: 18px;
             margin: 0;
             color: #333;
         }
-        
+
         .toolbar-group {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         /* GitHub 链接样式 */
         .github-link {
             display: inline-flex;
@@ -57,17 +57,17 @@
             font-size: 13px;
             transition: background-color 0.2s;
         }
-        
+
         .github-link:hover {
             background-color: #0366d6;
         }
-        
+
         .github-link svg {
             width: 16px;
             height: 16px;
             fill: currentColor;
         }
-        
+
         .star-button {
             display: inline-flex;
             align-items: center;
@@ -81,12 +81,12 @@
             font-size: 13px;
             transition: all 0.2s;
         }
-        
+
         .star-button:hover {
             background-color: #f3f4f6;
             border-color: #d1d5da;
         }
-        
+
         .star-button svg {
             width: 14px;
             height: 14px;
@@ -101,27 +101,27 @@
             flex: 1;
             overflow: hidden;
         }
-        
+
         /* 在屏幕宽度足够时，使用左右布局 */
         @media (min-width: 1024px) {
             .editor-preview-container {
                 flex-direction: row;
             }
-            
+
             .editor-wrapper,
             .preview-wrapper {
                 flex: 1;
                 min-width: 0;
             }
         }
-        
+
         .editor-wrapper,
         .preview-wrapper {
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-        
+
         .section-header {
             padding: 8px 15px;
             background-color: #e9ecef;
@@ -146,48 +146,48 @@
             box-sizing: border-box;
             background-color: #fff;
         }
-        
+
         textarea#combinedContentInput:focus {
             outline: none;
         }
 
-        button { 
-            padding: 6px 12px; 
-            background-color: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
+        button {
+            padding: 6px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 13px;
             transition: background-color 0.2s;
         }
         button:hover { background-color: #0056b3; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #status { 
-            font-style: italic; 
-            color: #555; 
+        #status {
+            font-style: italic;
+            color: #555;
             font-size: 12px;
             margin-left: auto;
         }
-        .error-message { 
-            color: red; 
-            font-family: monospace; 
-            white-space: pre-wrap; 
-            text-align: left; 
-            background-color: #ffebeb; 
-            border: 1px solid #ffc0c0; 
-            padding: 10px; 
+        .error-message {
+            color: red;
+            font-family: monospace;
+            white-space: pre-wrap;
+            text-align: left;
+            background-color: #ffebeb;
+            border: 1px solid #ffc0c0;
+            padding: 10px;
             margin: 5px;
         }
-        label { 
-            margin-right: 5px; 
+        label {
+            margin-right: 5px;
             font-size: 13px;
             color: #495057;
         }
-        select { 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            border: 1px solid #ccc; 
+        select {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
             font-size: 13px;
             background-color: white;
         }
@@ -303,7 +303,7 @@
     <div class="container">
         <div class="toolbar">
             <h1 data-i18n="title">Markdown & Mermaid to DOCX</h1>
-            
+
             <div class="toolbar-group">
                 <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="github-link" title="View on GitHub">
                     <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -318,7 +318,7 @@
                     <span data-i18n="starButton">Star</span>
                 </a>
             </div>
-            
+
             <div class="toolbar-group">
                 <label for="fontPicker" data-i18n="fontLabel">字体:</label>
                 <select id="fontPicker">
@@ -349,12 +349,12 @@
                     </optgroup>
                 </select>
             </div>
-            
+
             <div class="toolbar-group">
                 <button id="generateDocxButton" data-i18n="generateButton">生成 DOCX</button>
                 <button id="printPreviewButton" data-i18n="printButton">打印预览</button>
             </div>
-            
+
             <div class="toolbar-group">
                 <label for="langPicker" data-i18n="languageLabel">语言:</label>
                 <select id="langPicker">
@@ -362,7 +362,7 @@
                     <option value="en">English</option>
                 </select>
             </div>
-            
+
             <div id="status"></div>
         </div>
 
@@ -371,7 +371,7 @@
                 <div class="section-header" data-i18n="editorHeader">编辑器 (支持 Markdown 和 Mermaid)</div>
                 <textarea id="combinedContentInput" data-i18n-placeholder="editorPlaceholder" placeholder="在此输入 Markdown 和 Mermaid 内容..."></textarea>
             </div>
-            
+
             <div class="preview-wrapper">
                 <div class="section-header" data-i18n="previewHeader">实时预览</div>
                 <div id="documentPreview">
@@ -433,16 +433,16 @@
         };
 
         // 当前语言
-        let currentLang = localStorage.getItem('preferredLang') || 
+        let currentLang = localStorage.getItem('preferredLang') ||
                          (navigator.language.startsWith('zh') ? 'zh-CN' : 'en');
 
         // 应用多语言
         function applyLanguage(lang) {
             currentLang = lang;
             localStorage.setItem('preferredLang', lang);
-            
+
             const texts = i18n[lang];
-            
+
             // 更新所有带 data-i18n 属性的元素
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -454,7 +454,7 @@
                     }
                 }
             });
-            
+
             // 更新 placeholder
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
@@ -462,7 +462,7 @@
                     el.placeholder = texts[key];
                 }
             });
-            
+
             // 更新语言选择器
             document.getElementById('langPicker').value = lang;
         }
@@ -494,6 +494,13 @@
         mermaid.initialize({
             startOnLoad: false, securityLevel: 'loose',
             flowchart: { htmlLabels: false, useMaxWidth: true }, theme: 'default',
+            gantt: {
+                fontSize: 20,
+                sectionFontSize: 20,
+                titleFontSize: 28,
+                barHeight: 50,
+                barGap: 10
+            },
         });
 
         async function loadDefaultMd() {
@@ -568,13 +575,13 @@
         async function updateFullPreview() {
             // 标记正在更新预览，防止触发同步滚动
             isUpdatingPreview = true;
-            
+
             // 保存编辑器当前的滚动位置
             const editorScrollTop = combinedContentInput.scrollTop;
             const editorScrollHeight = combinedContentInput.scrollHeight;
             const editorClientHeight = combinedContentInput.clientHeight;
             const editorScrollPercentage = editorScrollTop / (editorScrollHeight - editorClientHeight);
-            
+
             statusDiv.textContent = t('loadingDefault');
             documentPreviewDiv.innerHTML = '';
             let selectedFontFamily = fontPicker.value;
@@ -607,7 +614,7 @@
             }
             if (!documentStructure.length && rawContent.trim() === "") documentPreviewDiv.innerHTML = `<p><i>${t('previewPlaceholder')}</i></p>`;
             statusDiv.textContent = '';
-            
+
             // 延迟恢复同步滚动，等待 DOM 更新完成
             setTimeout(() => {
                 // 恢复编辑器的滚动位置（基于之前的百分比）
@@ -616,14 +623,14 @@
                 if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
                     combinedContentInput.scrollTop = editorScrollPercentage * (newEditorScrollHeight - newEditorClientHeight);
                 }
-                
+
                 // 预览区域同步到编辑器位置
                 if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
                     const previewScrollHeight = documentPreviewDiv.scrollHeight;
                     const previewClientHeight = documentPreviewDiv.clientHeight;
                     documentPreviewDiv.scrollTop = editorScrollPercentage * (previewScrollHeight - previewClientHeight);
                 }
-                
+
                 // 恢复同步滚动
                 isUpdatingPreview = false;
             }, 100);
@@ -847,31 +854,31 @@
             if (!content || !content.trim()) {
                 return 'document';
             }
-            
+
             // 尝试匹配第一个标题 (# 标题)
             const headingMatch = content.match(/^#+\s+(.+)$/m);
             if (headingMatch && headingMatch[1]) {
                 return sanitizeFileName(headingMatch[1].trim());
             }
-            
+
             // 如果没有标题，取第一行非空文本
             const lines = content.split('\n');
             for (const line of lines) {
                 const trimmed = line.trim();
                 // 跳过空行、代码块标记、分隔线等
-                if (trimmed && 
-                    !trimmed.startsWith('```') && 
-                    !trimmed.startsWith('---') && 
+                if (trimmed &&
+                    !trimmed.startsWith('```') &&
+                    !trimmed.startsWith('---') &&
                     !trimmed.startsWith('===') &&
                     trimmed !== '***' &&
                     trimmed !== '___') {
                     return sanitizeFileName(trimmed);
                 }
             }
-            
+
             return 'document';
         }
-        
+
         // 清理文件名，移除非法字符
         function sanitizeFileName(name) {
             // 移除或替换文件名中的非法字符
@@ -880,12 +887,12 @@
                 .replace(/\s+/g, '_')          // 空格替换为下划线
                 .replace(/[^\u0000-\u007F\u4e00-\u9fa5]/g, '') // 保留 ASCII 和中文
                 .trim();
-            
+
             // 限制长度
             if (cleaned.length > 50) {
                 cleaned = cleaned.substring(0, 50);
             }
-            
+
             // 如果清理后为空，返回默认名称
             return cleaned || 'document';
         }
@@ -934,16 +941,16 @@
                         heading6: { run: { font: selectedFont, bold: true, size: 20 } },
                     },
                      paragraphStyles: [
-                        { id: "Normal", name: "Normal", basedOn: "Normal", next: "Normal", run: { font: selectedFont, size: 20 } }, // 10pt
-                        { id: "SourceCode", name: "Source Code", basedOn: "Normal", next: "Normal",
-                            run: { font: { name: "Courier New" }, size: 18 }, // Code blocks: 9pt
-                            paragraph: { indent: { left: 400 }, spacing: { before: 100, after: 100 }, keepLines: true }, // Keep lines together for code
-                        },
-                        { id: "IntenseQuote", name: "Intense Quote", basedOn: "Normal", next: "Normal",
-                            run: { italics: true, color: "4F81BD", font: { name: selectedFont }, size: 20 }, // Changed color to match Word's default
-                            paragraph: { indent: { left: 720, right: 720 }, spacing: { line: 276, rule: docxGlobal.LineRuleType.AUTO } },
-                        },
-                    ],
+                         { id: "Normal", name: "Normal", basedOn: "Normal", next: "Normal", run: { font: selectedFont, size: 20 }, paragraph: { spacing: { line: 360, rule: docxGlobal.LineRuleType.AUTO } } }, // 10pt, 1.5倍行距
+                         { id: "SourceCode", name: "Source Code", basedOn: "Normal", next: "Normal",
+                             run: { font: { name: "Courier New" }, size: 18 }, // Code blocks: 9pt
+                             paragraph: { indent: { left: 400 }, spacing: { before: 100, after: 100, line: 360, rule: docxGlobal.LineRuleType.AUTO }, keepLines: true }, // Keep lines together for code, 1.5倍行距
+                         },
+                         { id: "IntenseQuote", name: "Intense Quote", basedOn: "Normal", next: "Normal",
+                             run: { italics: true, color: "4F81BD", font: { name: selectedFont }, size: 20 }, // Changed color to match Word's default
+                             paragraph: { indent: { left: 720, right: 720 }, spacing: { line: 360, rule: docxGlobal.LineRuleType.AUTO } }, // 1.5倍行距
+                         },
+                     ],
                     characterStyles: [ // Define Hyperlink character style
                         { id: "Hyperlink", name: "Hyperlink", basedOn: "DefaultParagraphFont", run: { color: "0563C1", underline: { type: docxGlobal.UnderlineType.SINGLE } } }
                     ]
@@ -967,11 +974,11 @@
                     }]},
                 });
                 const blob = await docxGlobal.Packer.toBlob(fullDoc);
-                
+
                 // 从内容中提取文件名
                 const fileName = extractFileName(rawContent);
-                saveAs(blob, `${fileName}.docx`);
-                
+                saveAs(blob, `${fileName}_${window.location.host}.docx`);
+
                 statusDiv.textContent = t('success');
             } catch (e) { console.error("Error DOCX gen:", e, e.stack); statusDiv.textContent = `${t('error')}${e.message}`; }
             finally { generateDocxButton.disabled = false; }
