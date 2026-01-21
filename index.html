@@ -809,8 +809,14 @@
                                     // Preserve inline elements within table cells
                                     Array.from(cellElement.childNodes).forEach(child => cellContentDiv.appendChild(child.cloneNode(true)));
 
+                                    // 读取 colspan 和 rowspan 属性，支持 HTML table 的单元格合并
+                                    const colspan = Math.max(1, parseInt(cellElement.getAttribute('colspan')) || 1);
+                                    const rowspan = Math.max(1, parseInt(cellElement.getAttribute('rowspan')) || 1);
+
                                     cells.push(new docxGlobal.TableCell({
                                         children: [new docxGlobal.Paragraph({ children: processInlineFormatting(cellContentDiv, docxGlobal) })],
+                                        columnSpan: colspan,  // 列合并
+                                        rowSpan: rowspan,     // 行合并
                                         borders: { // Add default borders to table cells
                                             top: { style: docxGlobal.BorderStyle.SINGLE, size: 1, color: "auto" },
                                             bottom: { style: docxGlobal.BorderStyle.SINGLE, size: 1, color: "auto" },
