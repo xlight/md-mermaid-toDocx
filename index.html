@@ -905,6 +905,10 @@
             if (!docxGlobal) { statusDiv.textContent = t('error') + 'DOCX library not loaded.'; generateDocxButton.disabled = false; return; }
 
             try {
+                // DOCX 图片尺寸约束：基于 A4 纸张（8.27英寸宽）减去左右边距（各1英寸）
+                // 可用宽度 = 8.27 - 2 = 6.27 英寸 ≈ 602 像素（在 96 DPI 下）
+                const MAX_IMAGE_WIDTH_PIXELS = 602;
+
                 const finalDocChildren = [];
                 const rawContent = combinedContentInput.value;
                 const documentStructure = parseCombinedContentFromTextarea(rawContent);
@@ -921,8 +925,18 @@
                             const tempImg = new Image(); tempImg.src = URL.createObjectURL(pngBlob);
                             await new Promise(r => tempImg.onload=r); URL.revokeObjectURL(tempImg.src);
                             if (tempImg.naturalWidth > 0 && tempImg.naturalHeight > 0) {
+                                // 计算缩放比例以适应页面宽度（仅缩小不放大）
+                                let finalWidth = tempImg.naturalWidth;
+                                let finalHeight = tempImg.naturalHeight;
+                                
+                                if (finalWidth > MAX_IMAGE_WIDTH_PIXELS) {
+                                    const scale = MAX_IMAGE_WIDTH_PIXELS / finalWidth;
+                                    finalWidth = MAX_IMAGE_WIDTH_PIXELS;
+                                    finalHeight = Math.round(tempImg.naturalHeight * scale);
+                                }
+                                
                                 finalDocChildren.push(new docxGlobal.Paragraph({
-                                    children: [new docxGlobal.ImageRun({ data: imageBuffer, transformation: { width: tempImg.naturalWidth, height: tempImg.naturalHeight }, type:"png", fileName: `${segment.id}.png` })],
+                                    children: [new docxGlobal.ImageRun({ data: imageBuffer, transformation: { width: finalWidth, height: finalHeight }, type:"png", fileName: `${segment.id}.png` })],
                                     alignment: docxGlobal.AlignmentType.CENTER, spacing: { before: 200, after: 200 }
                                 }));
                             } else { finalDocChildren.push(new docxGlobal.Paragraph({children: [new docxGlobal.TextRun({text: `[Mermaid image ${segment.id} invalid dimensions]`, italics: true})]}))}
