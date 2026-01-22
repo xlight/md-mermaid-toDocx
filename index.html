@@ -261,6 +261,11 @@
             box-sizing: border-box;
         }
 
+        /* 甘特图时间轴刻度标签字体大小 - 加大一倍 */
+        #documentPreview .mermaid-preview-segment svg .tick text {
+            font-size: 20px !important;  /* 时间轴刻度标签字体大小加倍 (默认约10px) */
+        }
+
         @media print {
             body * { visibility: hidden; }
             #documentPreview, #documentPreview * { visibility: visible; }
@@ -934,13 +939,13 @@
                                 // 计算缩放比例以适应页面宽度（仅缩小不放大）
                                 let finalWidth = tempImg.naturalWidth;
                                 let finalHeight = tempImg.naturalHeight;
-                                
+
                                 if (finalWidth > MAX_IMAGE_WIDTH_PIXELS) {
                                     const scale = MAX_IMAGE_WIDTH_PIXELS / finalWidth;
                                     finalWidth = MAX_IMAGE_WIDTH_PIXELS;
                                     finalHeight = Math.round(tempImg.naturalHeight * scale);
                                 }
-                                
+
                                 finalDocChildren.push(new docxGlobal.Paragraph({
                                     children: [new docxGlobal.ImageRun({ data: imageBuffer, transformation: { width: finalWidth, height: finalHeight }, type:"png", fileName: `${segment.id}.png` })],
                                     alignment: docxGlobal.AlignmentType.CENTER, spacing: { before: 200, after: 200 }
