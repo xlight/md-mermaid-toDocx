@@ -745,7 +745,9 @@
             tempDiv.innerHTML = html;
             const selectedFont = fontPicker.value;
 
-            const getListLevel = (elementNode) => { /* ... same ... */  let l=0; let c=elementNode.parentElement; while(c&&c!==tempDiv){if(c.tagName==='UL'||c.tagName==='OL')l++; c=c.parentElement;} return Math.max(0,l);};
+            // 获取列表项的嵌套层级。顶层列表（直接在 tempDiv 下）应返回 0。
+            // 因为 li 的父元素是 ul/ol，所以计数需要减 1 才能得到正确的层级。
+            const getListLevel = (elementNode) => { /* ... same ... */  let l=0; let c=elementNode.parentElement; while(c&&c!==tempDiv){if(c.tagName==='UL'||c.tagName==='OL')l++; c=c.parentElement;} return Math.max(0, l - 1);};
 
             const processNode = (node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
@@ -779,7 +781,7 @@
                                     const level = getListLevel(li);
                                     // Handle task list items (GFM extension for marked.js)
                                     const isTaskItem = li.classList.contains("task-list-item");
-                                    const isChecked = isTaskItem && li.querySelector("input[type='checkbox']").checked;
+                                    const isChecked = isTaskItem && li.querySelector("input[type='checkbox']")?.checked;
 
                                     let prefix = "";
                                     if (isTaskItem) { prefix = isChecked ? "☑ " : "☐ "; }
@@ -796,11 +798,19 @@
                                         textRuns.unshift(new docxGlobal.TextRun({ text: prefix, font: { name: selectedFont }, size: 20 }));
                                     }
 
-                                    elements.push(new docxGlobal.Paragraph({
+                                    // 为任务列表项设置缩进，每级缩进 720 单位（0.5 英寸）
+                                    const paragraphOptions = {
                                         children: textRuns,
                                         bullet: tagName === 'ul' && !isTaskItem ? { level: level } : undefined, // No bullet for task items if prefix is used
                                         numbering: tagName === 'ol' ? { reference: "default-numbering", level: level } : undefined
-                                    }));
+                                    };
+                                    
+                                    // 如果是任务列表项，手动添加缩进以匹配列表层级
+                                    if (isTaskItem) {
+                                        paragraphOptions.indent = { left: 720 * (level + 1) }; // 每级 720 单位
+                                    }
+                                    
+                                    elements.push(new docxGlobal.Paragraph(paragraphOptions));
                                     Array.from(li.children).forEach(childNodeInLi => {
                                         if (childNodeInLi.tagName.toLowerCase() === 'ul' || childNodeInLi.tagName.toLowerCase() === 'ol') {
                                             processNode(childNodeInLi);
