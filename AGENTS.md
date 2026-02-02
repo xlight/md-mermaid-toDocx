@@ -1,6 +1,11 @@
 <!-- OPENSPEC:START -->
 # OpenSpec Instructions
 
+## 使用中文
+ - LLM 输出的 thinking 和内容使用中文
+ - 代码注释使用中文
+ - 文档使用中文
+
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
