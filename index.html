@@ -266,42 +266,263 @@
             font-size: 20px !important;  /* 时间轴刻度标签字体大小加倍 (默认约10px) */
         }
 
-        @media print {
-            body * { visibility: hidden; }
-            #documentPreview, #documentPreview * { visibility: visible; }
-            #documentPreview {
-                position: absolute; left: 0; top: 0; width: 100%;
-                margin: 0; padding: 15mm; /* Typical print margin */
-                border: none; box-shadow: none; background-color: white;
-                font-size: 10pt;
-            }
-            #documentPreview button, #documentPreview input, #documentPreview textarea, #documentPreview select { display: none !important; }
-            #documentPreview .error-message { border: 1px solid #666 !important; background-color: #f0f0f0 !important; color: black !important; }
-            #documentPreview .mermaid-preview-segment svg {
-                max-width: 100% !important; /* Try to fit within print area */
-                width: auto !important; /* Allow shrinking */
-                height: auto !important;
-                page-break-inside: avoid;
-                padding: 0 !important; /* Remove padding for print to maximize diagram size */
-                border: none !important; /* Remove border for cleaner print */
-            }
-             #documentPreview .markdown-preview-segment h1 { font-size: 18pt !important; font-weight: bold !important; }
-             #documentPreview .markdown-preview-segment h2 { font-size: 14pt !important; font-weight: bold !important; }
-             #documentPreview .markdown-preview-segment h3 { font-size: 12pt !important; font-weight: bold !important; }
-             #documentPreview .markdown-preview-segment h4 { font-size: 12pt !important; font-style: italic !important; font-weight: normal !important; }
-             #documentPreview .markdown-preview-segment p,
-             #documentPreview .markdown-preview-segment li,
-             #documentPreview .markdown-preview-segment td,
-             #documentPreview .markdown-preview-segment th { font-size: 10pt !important; }
-             #documentPreview .markdown-preview-segment table { width: 100% !important; page-break-inside: avoid; }
-             #documentPreview .markdown-preview-segment hr { border-top: 1px solid #000 !important; }
+        /* ===== 主题配置 UI 样式 ===== */
+        #customThemeButton {
+            padding: 6px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #customThemeButton:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* ASCII 输出显示样式 */
+        .ascii-preview-segment {
+            position: relative;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 15px auto;
+            padding: 10px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .ascii-preview-segment pre {
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            margin: 0;
+            white-space: pre;
+        }
+
+        .ascii-preview-segment .copy-ascii-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 4px 8px;
+            font-size: 11px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .ascii-preview-segment .copy-ascii-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 自定义主题模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-modal:hover {
+            color: #000;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .color-input-group label {
+            min-width: 100px;
+            font-weight: 500;
+        }
+
+        .color-input-group input[type="color"] {
+            width: 50px;
+            height: 35px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .color-input-group input[type="text"] {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .modal-footer button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-footer button.primary {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .modal-footer button.primary:hover {
+            background-color: #0056b3;
+        }
+
+        .optional-colors {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .optional-colors-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .optional-colors-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .optional-colors-content.show {
+            max-height: 500px;
+        }
+
+        /* Mermaid 配置模态框特定样式 */
+        #mermaidConfigModal .modal-content {
+            max-width: 700px;
+        }
+
+        #mermaidConfigButton {
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #mermaidConfigButton:hover {
+            background-color: #e0e0e0;
+        }
+
+        .config-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .config-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 8px;
+        }
+
+        .config-hint {
+            margin: 10px 0 0 0;
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .output-mode-help {
+            background-color: #fff;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .output-mode-help h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .output-mode-help ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .output-mode-help li {
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .output-mode-help li strong {
+            color: #333;
         }
     </style>
-    <!-- 使用国内可用的 CDN 源 -->
-    <script src="https://unpkg.com/mermaid@11.6.0/dist/mermaid.min.js"></script>
-    <script src="https://unpkg.com/marked@15.0.12/marked.min.js"></script>
+
+    <!-- CDN Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js"></script>
+    <script src="https://unpkg.com/beautiful-mermaid@0.1.3/dist/beautiful-mermaid.browser.global.js"></script>
     <script src="https://unpkg.com/docx@9.5.0/dist/index.iife.js"></script>
-    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.2/marked.min.js"></script>
 </head>
 <body>
 
@@ -356,6 +577,10 @@
             </div>
 
             <div class="toolbar-group">
+                <button id="mermaidConfigButton" data-i18n="mermaidConfigButton" title="Mermaid 配置">⚙️ 图表配置</button>
+            </div>
+
+            <div class="toolbar-group">
                 <button id="generateDocxButton" data-i18n="generateButton">生成 DOCX</button>
                 <button id="printPreviewButton" data-i18n="printButton">打印预览</button>
             </div>
@@ -386,6 +611,124 @@
         </div>
     </div>
 
+    <!-- 自定义主题模态框 -->
+    <div id="customThemeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="customThemeTitle">自定义主题</h2>
+                <span class="close-modal" id="closeCustomThemeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- 必填颜色 -->
+                <div class="color-input-group">
+                    <label for="themeBg" data-i18n="themeBgLabel">背景色 (bg):</label>
+                    <input type="color" id="themeBgColor" value="#ffffff">
+                    <input type="text" id="themeBg" value="#ffffff" placeholder="#ffffff">
+                </div>
+                <div class="color-input-group">
+                    <label for="themeFg" data-i18n="themeFgLabel">前景色 (fg):</label>
+                    <input type="color" id="themeFgColor" value="#09090b">
+                    <input type="text" id="themeFg" value="#09090b" placeholder="#09090b">
+                </div>
+
+                <!-- 可选颜色 -->
+                <div class="optional-colors">
+                    <div class="optional-colors-header">
+                        <input type="checkbox" id="enableOptionalColors">
+                        <label for="enableOptionalColors" data-i18n="optionalColorsLabel">启用可选颜色</label>
+                    </div>
+                    <div id="optionalColorsContent" class="optional-colors-content">
+                        <div class="color-input-group">
+                            <label for="themeLine" data-i18n="themeLineLabel">线条色 (line):</label>
+                            <input type="color" id="themeLineColor" value="#71717a">
+                            <input type="text" id="themeLine" value="#71717a" placeholder="#71717a">
+                        </div>
+                        <div class="color-input-group">
+                            <label for="themeAccent" data-i18n="themeAccentLabel">强调色 (accent):</label>
+                            <input type="color" id="themeAccentColor" value="#3b82f6">
+                            <input type="text" id="themeAccent" value="#3b82f6" placeholder="#3b82f6">
+                        </div>
+                        <div class="color-input-group">
+                            <label for="themeMuted" data-i18n="themeMutedLabel">柔和色 (muted):</label>
+                            <input type="color" id="themeMutedColor" value="#a1a1aa">
+                            <input type="text" id="themeMuted" value="#a1a1aa" placeholder="#a1a1aa">
+                        </div>
+                        <div class="color-input-group">
+                            <label for="themeSurface" data-i18n="themeSurfaceLabel">表面色 (surface):</label>
+                            <input type="color" id="themeSurfaceColor" value="#f4f4f5">
+                            <input type="text" id="themeSurface" value="#f4f4f5" placeholder="#f4f4f5">
+                        </div>
+                        <div class="color-input-group">
+                            <label for="themeBorder" data-i18n="themeBorderLabel">边框色 (border):</label>
+                            <input type="color" id="themeBorderColor" value="#e4e4e7">
+                            <input type="text" id="themeBorder" value="#e4e4e7" placeholder="#e4e4e7">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="applyThemeButton" class="primary" data-i18n="applyThemeButton">应用主题</button>
+                <button id="saveCustomThemeButton" data-i18n="saveCustomThemeButton">保存为自定义</button>
+                <button id="exportThemeButton" data-i18n="exportThemeButton">导出 JSON</button>
+                <button id="importThemeButton" data-i18n="importThemeButton">导入 JSON</button>
+                <input type="file" id="importThemeFile" accept=".json" style="display:none;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Mermaid 配置模态框 -->
+    <div id="mermaidConfigModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="mermaidConfigTitle">Mermaid 图表配置</h2>
+                <span class="close-modal" id="closeMermaidConfigModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- 主题选择 -->
+                <div class="config-section">
+                    <h3 data-i18n="themeSectionTitle">主题设置</h3>
+                    <div class="toolbar-group">
+                        <label for="themePicker" data-i18n="themeLabel">主题:</label>
+                        <select id="themePicker">
+                            <option value="zinc-light">Zinc Light</option>
+                        </select>
+                        <button id="customThemeButton" data-i18n="customThemeButton" title="自定义主题">🎨 自定义</button>
+                    </div>
+                    <p class="config-hint" data-i18n="themeHint">主题仅适用于流程图、时序图、类图和 ER 图</p>
+                </div>
+
+                <!-- 输出模式 -->
+                <div class="config-section">
+                    <h3 data-i18n="outputSectionTitle">输出模式</h3>
+                    <div class="toolbar-group">
+                        <label for="outputMode" data-i18n="outputModeLabel">输出:</label>
+                        <select id="outputMode">
+                            <option value="svg">SVG (主题)</option>
+                            <option value="ascii">ASCII (文本)</option>
+                            <option value="classic" selected>经典 (兼容)</option>
+                        </select>
+                    </div>
+                    <label id="asciiCharsetLabel" style="display:none; margin-top: 10px;">
+                        <input type="checkbox" id="useAscii">
+                        <span data-i18n="pureAsciiLabel">纯 ASCII 字符</span>
+                    </label>
+
+                    <div class="output-mode-help" style="margin-top: 15px;">
+                        <h4 data-i18n="outputModeHelpTitle">输出模式说明：</h4>
+                        <ul>
+                            <li><strong>SVG (主题)</strong>: <span data-i18n="svgModeDesc">应用主题到支持的图表，其他图表使用原生样式</span></li>
+                            <li><strong>ASCII (文本)</strong>: <span data-i18n="asciiModeDesc">将图表转换为纯文本格式，适合终端和聊天工具</span></li>
+                            <li><strong>经典 (兼容)</strong>: <span data-i18n="classicModeDesc">所有图表使用原生 Mermaid.js 渲染，最大兼容性</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeMermaidConfigButton" class="primary" data-i18n="closeButton">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 多语言文本定义
         const i18n = {
@@ -394,6 +737,10 @@
                 fontLabel: '字体:',
                 chineseFonts: '中文字体',
                 englishFonts: '英文字体',
+                themeLabel: '主题:',
+                customThemeButton: '🎨 自定义',
+                outputModeLabel: '输出:',
+                pureAsciiLabel: '纯 ASCII 字符',
                 generateButton: '生成 DOCX',
                 printButton: '打印预览',
                 languageLabel: '语言:',
@@ -410,13 +757,42 @@
                 error: '生成失败: ',
                 printPrompt: '请使用浏览器的打印功能 (Ctrl+P / Cmd+P)',
                 viewOnGithub: 'GitHub',
-                starButton: '加星'
+                starButton: '加星',
+                customThemeTitle: '自定义主题',
+                themeBgLabel: '背景色 (bg):',
+                themeFgLabel: '前景色 (fg):',
+                optionalColorsLabel: '启用可选颜色',
+                themeLineLabel: '线条色 (line):',
+                themeAccentLabel: '强调色 (accent):',
+                themeMutedLabel: '柔和色 (muted):',
+                themeSurfaceLabel: '表面色 (surface):',
+                themeBorderLabel: '边框色 (border):',
+                applyThemeButton: '应用主题',
+                saveCustomThemeButton: '保存为自定义',
+                exportThemeButton: '导出 JSON',
+                importThemeButton: '导入 JSON',
+                copyAsciiButton: '复制',
+                asciiCopied: '已复制到剪贴板',
+                mermaidConfigButton: '⚙️ 图表配置',
+                mermaidConfigTitle: 'Mermaid 图表配置',
+                themeSectionTitle: '主题设置',
+                themeHint: '主题仅适用于流程图、时序图、类图和 ER 图',
+                outputSectionTitle: '输出模式',
+                outputModeHelpTitle: '输出模式说明：',
+                svgModeDesc: '应用主题到支持的图表，其他图表使用原生样式',
+                asciiModeDesc: '将图表转换为纯文本格式，适合终端和聊天工具',
+                classicModeDesc: '所有图表使用原生 Mermaid.js 渲染，最大兼容性',
+                closeButton: '关闭'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
                 fontLabel: 'Font:',
                 chineseFonts: 'Chinese Fonts',
                 englishFonts: 'English Fonts',
+                themeLabel: 'Theme:',
+                customThemeButton: '🎨 Custom',
+                outputModeLabel: 'Output:',
+                pureAsciiLabel: 'Pure ASCII',
                 generateButton: 'Generate DOCX',
                 printButton: 'Print Preview',
                 languageLabel: 'Language:',
@@ -433,7 +809,32 @@
                 error: 'Generation failed: ',
                 printPrompt: 'Please use browser print function (Ctrl+P / Cmd+P)',
                 viewOnGithub: 'GitHub',
-                starButton: 'Star'
+                starButton: 'Star',
+                customThemeTitle: 'Custom Theme',
+                themeBgLabel: 'Background (bg):',
+                themeFgLabel: 'Foreground (fg):',
+                optionalColorsLabel: 'Enable Optional Colors',
+                themeLineLabel: 'Line Color:',
+                themeAccentLabel: 'Accent Color:',
+                themeMutedLabel: 'Muted Color:',
+                themeSurfaceLabel: 'Surface Color:',
+                themeBorderLabel: 'Border Color:',
+                applyThemeButton: 'Apply Theme',
+                saveCustomThemeButton: 'Save as Custom',
+                exportThemeButton: 'Export JSON',
+                importThemeButton: 'Import JSON',
+                copyAsciiButton: 'Copy',
+                asciiCopied: 'Copied to clipboard',
+                mermaidConfigButton: '⚙️ Chart Config',
+                mermaidConfigTitle: 'Mermaid Chart Configuration',
+                themeSectionTitle: 'Theme Settings',
+                themeHint: 'Themes only apply to Flowchart, Sequence, Class, and ER diagrams',
+                outputSectionTitle: 'Output Mode',
+                outputModeHelpTitle: 'Output Mode Description:',
+                svgModeDesc: 'Apply themes to supported diagrams, others use native styles',
+                asciiModeDesc: 'Convert diagrams to plain text, suitable for terminals and chat tools',
+                classicModeDesc: 'All diagrams use native Mermaid.js rendering for maximum compatibility',
+                closeButton: 'Close'
             }
         };
 
@@ -484,6 +885,29 @@
         const documentPreviewDiv = document.getElementById('documentPreview');
         const fontPicker = document.getElementById('fontPicker');
         const langPicker = document.getElementById('langPicker');
+
+        // 主题和输出模式相关 DOM 元素
+        const themePicker = document.getElementById('themePicker');
+        const customThemeButton = document.getElementById('customThemeButton');
+        const outputMode = document.getElementById('outputMode');
+        const asciiCharsetLabel = document.getElementById('asciiCharsetLabel');
+        const useAscii = document.getElementById('useAscii');
+        const customThemeModal = document.getElementById('customThemeModal');
+        const closeCustomThemeModal = document.getElementById('closeCustomThemeModal');
+        const enableOptionalColors = document.getElementById('enableOptionalColors');
+        const optionalColorsContent = document.getElementById('optionalColorsContent');
+        const applyThemeButton = document.getElementById('applyThemeButton');
+        const saveCustomThemeButton = document.getElementById('saveCustomThemeButton');
+        const exportThemeButton = document.getElementById('exportThemeButton');
+        const importThemeButton = document.getElementById('importThemeButton');
+        const importThemeFile = document.getElementById('importThemeFile');
+
+        // Mermaid 配置模态框相关 DOM 元素
+        const mermaidConfigButton = document.getElementById('mermaidConfigButton');
+        const mermaidConfigModal = document.getElementById('mermaidConfigModal');
+        const closeMermaidConfigModal = document.getElementById('closeMermaidConfigModal');
+        const closeMermaidConfigButton = document.getElementById('closeMermaidConfigButton');
+
         let debounceTimerPreview;
         let isSyncingScroll = false; // 防止循环触发
         let isUpdatingPreview = false; // 防止预览更新时触发同步滚动
@@ -496,6 +920,7 @@
             applyLanguage(e.target.value);
         });
 
+        // ===== 保留原 Mermaid.js 配置（用于 Gantt, Pie 等图表） =====
         mermaid.initialize({
             startOnLoad: false, securityLevel: 'loose',
             flowchart: { htmlLabels: false, useMaxWidth: true }, theme: 'default',
@@ -510,6 +935,513 @@
                 // 甘特图时间轴相关字体大小配置
                 gridTextSize: '20px',      // 时间轴刻度标签字体大小 (默认约10px)
             }
+        });
+
+        // ===== CDN 加载检测 =====
+        // 检测 beautiful-mermaid 是否成功加载
+        const beautifulMermaidLoaded = typeof beautifulMermaid !== 'undefined';
+        if (!beautifulMermaidLoaded) {
+            console.warn('beautiful-mermaid CDN 加载失败，主题功能不可用。所有图表将使用原生 Mermaid.js 渲染。');
+            console.warn('备选 CDN: https://cdnjs.cloudflare.com/ajax/libs/beautiful-mermaid/0.1.3/beautiful-mermaid.browser.global.js');
+        } else {
+            console.log('✓ beautiful-mermaid 加载成功');
+            console.log('✓ Mermaid.js 加载成功');
+        }
+
+        // ===== 图表类型检测函数 =====
+        /**
+         * 检测 Mermaid 图表类型
+         * @param {string} code - Mermaid 代码
+         * @returns {string} 图表类型
+         */
+        function detectDiagramType(code) {
+            const trimmed = code.trim().toLowerCase();
+            if (trimmed.startsWith('graph ') || trimmed.startsWith('flowchart ')) return 'flowchart';
+            if (trimmed.startsWith('statediagram')) return 'state';
+            if (trimmed.startsWith('sequencediagram')) return 'sequence';
+            if (trimmed.startsWith('classdiagram')) return 'class';
+            if (trimmed.startsWith('erdiagram')) return 'er';
+            if (trimmed.startsWith('gantt')) return 'gantt';
+            if (trimmed.startsWith('pie')) return 'pie';
+            if (trimmed.startsWith('journey')) return 'journey';
+            if (trimmed.startsWith('gitgraph')) return 'gitGraph';
+            if (trimmed.startsWith('mindmap')) return 'mindmap';
+            if (trimmed.startsWith('timeline')) return 'timeline';
+            if (trimmed.startsWith('sankey-beta')) return 'sankey';
+            if (trimmed.startsWith('requirementdiagram')) return 'requirement';
+            if (trimmed.startsWith('quadrantchart')) return 'quadrantChart';
+            if (trimmed.startsWith('xychart-beta')) return 'xyChart';
+            if (trimmed.startsWith('block-beta')) return 'block';
+            if (trimmed.startsWith('packet-beta')) return 'packet';
+            if (trimmed.startsWith('zenuml')) return 'zenuml';
+            if (trimmed.startsWith('kanban')) return 'kanban';
+            if (trimmed.startsWith('architecture-beta')) return 'architecture';
+            if (trimmed.startsWith('c4context') || trimmed.startsWith('c4container') || trimmed.startsWith('c4component') || trimmed.startsWith('c4dynamic') || trimmed.startsWith('c4deployment')) return 'c4';
+            // 默认尝试作为 flowchart
+            return 'flowchart';
+        }
+
+        // ===== 主题管理系统 =====
+        /**
+         * ThemeManager 类 - 管理 beautiful-mermaid 主题
+         */
+        class ThemeManager {
+            constructor() {
+                // beautiful-mermaid 支持的图表类型
+                this.supportedTypes = ['flowchart', 'state', 'sequence', 'class', 'er'];
+
+                // 加载当前主题
+                this.currentTheme = this.loadTheme();
+
+                // 加载自定义主题列表
+                this.customThemes = this.loadCustomThemes();
+            }
+
+            /**
+             * 从 localStorage 加载主题
+             */
+            loadTheme() {
+                try {
+                    const saved = localStorage.getItem('selectedTheme');
+                    if (saved) {
+                        return JSON.parse(saved);
+                    }
+                } catch (e) {
+                    console.error('加载主题失败:', e);
+                }
+
+                // 默认主题：zinc-light (如果 beautiful-mermaid 可用)
+                if (beautifulMermaidLoaded && beautifulMermaid.THEMES && beautifulMermaid.THEMES['zinc-light']) {
+                    return beautifulMermaid.THEMES['zinc-light'];
+                }
+
+                // 备用默认主题
+                return { bg: '#ffffff', fg: '#09090b' };
+            }
+
+            /**
+             * 保存主题到 localStorage
+             */
+            saveTheme(colors) {
+                try {
+                    localStorage.setItem('selectedTheme', JSON.stringify(colors));
+                    this.currentTheme = colors;
+                } catch (e) {
+                    console.error('保存主题失败:', e);
+                }
+            }
+
+            /**
+             * 从 localStorage 加载自定义主题列表
+             */
+            loadCustomThemes() {
+                try {
+                    const saved = localStorage.getItem('customThemes');
+                    if (saved) {
+                        return JSON.parse(saved);
+                    }
+                } catch (e) {
+                    console.error('加载自定义主题失败:', e);
+                }
+                return [];
+            }
+
+            /**
+             * 保存自定义主题列表到 localStorage
+             */
+            saveCustomThemes() {
+                try {
+                    localStorage.setItem('customThemes', JSON.stringify(this.customThemes));
+                } catch (e) {
+                    console.error('保存自定义主题失败:', e);
+                }
+            }
+
+            /**
+             * 添加自定义主题
+             */
+            addCustomTheme(name, colors) {
+                const theme = { id: `custom-${Date.now()}`, name, colors };
+                this.customThemes.push(theme);
+                this.saveCustomThemes();
+                return theme;
+            }
+
+            /**
+             * 删除自定义主题
+             */
+            deleteCustomTheme(id) {
+                this.customThemes = this.customThemes.filter(t => t.id !== id);
+                this.saveCustomThemes();
+            }
+
+            /**
+             * 获取当前主题
+             */
+            getCurrentTheme() {
+                return this.currentTheme;
+            }
+
+            /**
+             * 判断图表类型是否支持主题
+             */
+            isTypeSupported(type) {
+                return this.supportedTypes.includes(type);
+            }
+        }
+
+        // 初始化主题管理器
+        const themeManager = beautifulMermaidLoaded ? new ThemeManager() : null;
+
+        // ===== 初始化主题选择器 =====
+        if (beautifulMermaidLoaded && beautifulMermaid.THEMES) {
+            // 清空现有选项
+            themePicker.innerHTML = '';
+
+            // 添加内置主题
+            const themeNames = Object.keys(beautifulMermaid.THEMES);
+            themeNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                // 格式化主题名称：zinc-light => Zinc Light
+                option.textContent = name.split('-').map(word =>
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+                themePicker.appendChild(option);
+            });
+
+            // 添加自定义主题
+            if (themeManager && themeManager.customThemes.length > 0) {
+                const separator = document.createElement('option');
+                separator.disabled = true;
+                separator.textContent = '--- ' + t('customThemes') + ' ---';
+                themePicker.appendChild(separator);
+
+                themeManager.customThemes.forEach(theme => {
+                    const option = document.createElement('option');
+                    option.value = theme.id;
+                    option.textContent = theme.name;
+                    themePicker.appendChild(option);
+                });
+            }
+        } else {
+            // beautiful-mermaid 未加载，禁用主题选择器
+            themePicker.disabled = true;
+            customThemeButton.disabled = true;
+            themePicker.innerHTML = '<option>主题功能不可用</option>';
+        }
+
+        // ===== UI 事件处理 =====
+
+        // 输出模式切换事件
+        outputMode.addEventListener('change', (e) => {
+            const mode = e.target.value;
+            asciiCharsetLabel.style.display = mode === 'ascii' ? 'inline' : 'none';
+            schedulePreviewUpdate();
+        });
+
+        // Pure ASCII 复选框切换
+        useAscii.addEventListener('change', () => {
+            if (outputMode.value === 'ascii') {
+                schedulePreviewUpdate();
+            }
+        });
+
+        // 主题选择事件
+        themePicker.addEventListener('change', (e) => {
+            if (!beautifulMermaidLoaded || !themeManager) return;
+
+            const selectedValue = e.target.value;
+            let selectedTheme;
+
+            // 检查是否是内置主题
+            if (beautifulMermaid.THEMES[selectedValue]) {
+                selectedTheme = beautifulMermaid.THEMES[selectedValue];
+            } else {
+                // 检查是否是自定义主题
+                const customTheme = themeManager.customThemes.find(t => t.id === selectedValue);
+                if (customTheme) {
+                    selectedTheme = customTheme.colors;
+                }
+            }
+
+            if (selectedTheme) {
+                themeManager.saveTheme(selectedTheme);
+                schedulePreviewUpdate();
+            }
+        });
+
+        // 自定义主题按钮点击事件
+        customThemeButton.addEventListener('click', () => {
+            if (!beautifulMermaidLoaded) {
+                alert('beautiful-mermaid 未加载，主题功能不可用。');
+                return;
+            }
+
+            // 加载当前主题到表单
+            const currentTheme = themeManager ? themeManager.getCurrentTheme() : { bg: '#ffffff', fg: '#09090b' };
+            document.getElementById('themeBg').value = currentTheme.bg || '#ffffff';
+            document.getElementById('themeBgColor').value = currentTheme.bg || '#ffffff';
+            document.getElementById('themeFg').value = currentTheme.fg || '#09090b';
+            document.getElementById('themeFgColor').value = currentTheme.fg || '#09090b';
+
+            if (currentTheme.line) {
+                document.getElementById('themeLine').value = currentTheme.line;
+                document.getElementById('themeLineColor').value = currentTheme.line;
+            }
+            if (currentTheme.accent) {
+                document.getElementById('themeAccent').value = currentTheme.accent;
+                document.getElementById('themeAccentColor').value = currentTheme.accent;
+            }
+            if (currentTheme.muted) {
+                document.getElementById('themeMuted').value = currentTheme.muted;
+                document.getElementById('themeMutedColor').value = currentTheme.muted;
+            }
+            if (currentTheme.surface) {
+                document.getElementById('themeSurface').value = currentTheme.surface;
+                document.getElementById('themeSurfaceColor').value = currentTheme.surface;
+            }
+            if (currentTheme.border) {
+                document.getElementById('themeBorder').value = currentTheme.border;
+                document.getElementById('themeBorderColor').value = currentTheme.border;
+            }
+
+            customThemeModal.style.display = 'block';
+        });
+
+        // 关闭模态框
+        closeCustomThemeModal.addEventListener('click', () => {
+            customThemeModal.style.display = 'none';
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === customThemeModal) {
+                customThemeModal.style.display = 'none';
+            }
+        });
+
+        // 启用可选颜色复选框
+        enableOptionalColors.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                optionalColorsContent.classList.add('show');
+            } else {
+                optionalColorsContent.classList.remove('show');
+            }
+        });
+
+        // Mermaid 配置按钮点击事件
+        mermaidConfigButton.addEventListener('click', () => {
+            mermaidConfigModal.style.display = 'block';
+        });
+
+        // 关闭 Mermaid 配置模态框
+        closeMermaidConfigModal.addEventListener('click', () => {
+            mermaidConfigModal.style.display = 'none';
+        });
+
+        closeMermaidConfigButton.addEventListener('click', () => {
+            mermaidConfigModal.style.display = 'none';
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === mermaidConfigModal) {
+                mermaidConfigModal.style.display = 'none';
+            }
+        });
+
+        // 同步颜色选择器和文本输入框
+        ['Bg', 'Fg', 'Line', 'Accent', 'Muted', 'Surface', 'Border'].forEach(colorName => {
+            const colorInput = document.getElementById(`theme${colorName}Color`);
+            const textInput = document.getElementById(`theme${colorName}`);
+
+            if (colorInput && textInput) {
+                colorInput.addEventListener('input', (e) => {
+                    textInput.value = e.target.value;
+                });
+
+                textInput.addEventListener('input', (e) => {
+                    const value = e.target.value;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                        colorInput.value = value;
+                    }
+                });
+            }
+        });
+
+        // 应用主题按钮
+        applyThemeButton.addEventListener('click', () => {
+            if (!themeManager) return;
+
+            const theme = {
+                bg: document.getElementById('themeBg').value,
+                fg: document.getElementById('themeFg').value
+            };
+
+            if (enableOptionalColors.checked) {
+                const line = document.getElementById('themeLine').value;
+                const accent = document.getElementById('themeAccent').value;
+                const muted = document.getElementById('themeMuted').value;
+                const surface = document.getElementById('themeSurface').value;
+                const border = document.getElementById('themeBorder').value;
+
+                if (line) theme.line = line;
+                if (accent) theme.accent = accent;
+                if (muted) theme.muted = muted;
+                if (surface) theme.surface = surface;
+                if (border) theme.border = border;
+            }
+
+            themeManager.saveTheme(theme);
+            schedulePreviewUpdate();
+
+            statusDiv.textContent = '主题已应用';
+            setTimeout(() => statusDiv.textContent = '', 2000);
+        });
+
+        // 保存自定义主题按钮
+        saveCustomThemeButton.addEventListener('click', () => {
+            if (!themeManager) return;
+
+            const name = prompt('请输入自定义主题名称:');
+            if (!name) return;
+
+            const theme = {
+                bg: document.getElementById('themeBg').value,
+                fg: document.getElementById('themeFg').value
+            };
+
+            if (enableOptionalColors.checked) {
+                const line = document.getElementById('themeLine').value;
+                const accent = document.getElementById('themeAccent').value;
+                const muted = document.getElementById('themeMuted').value;
+                const surface = document.getElementById('themeSurface').value;
+                const border = document.getElementById('themeBorder').value;
+
+                if (line) theme.line = line;
+                if (accent) theme.accent = accent;
+                if (muted) theme.muted = muted;
+                if (surface) theme.surface = surface;
+                if (border) theme.border = border;
+            }
+
+            const customTheme = themeManager.addCustomTheme(name, theme);
+
+            // 添加到选择器
+            const option = document.createElement('option');
+            option.value = customTheme.id;
+            option.textContent = name;
+            themePicker.appendChild(option);
+            themePicker.value = customTheme.id;
+
+            themeManager.saveTheme(theme);
+            customThemeModal.style.display = 'none';
+            schedulePreviewUpdate();
+
+            statusDiv.textContent = `自定义主题 "${name}" 已保存`;
+            setTimeout(() => statusDiv.textContent = '', 2000);
+        });
+
+        // 导出主题按钮
+        exportThemeButton.addEventListener('click', () => {
+            if (!themeManager) return;
+
+            const theme = {
+                bg: document.getElementById('themeBg').value,
+                fg: document.getElementById('themeFg').value
+            };
+
+            if (enableOptionalColors.checked) {
+                const line = document.getElementById('themeLine').value;
+                const accent = document.getElementById('themeAccent').value;
+                const muted = document.getElementById('themeMuted').value;
+                const surface = document.getElementById('themeSurface').value;
+                const border = document.getElementById('themeBorder').value;
+
+                if (line) theme.line = line;
+                if (accent) theme.accent = accent;
+                if (muted) theme.muted = muted;
+                if (surface) theme.surface = surface;
+                if (border) theme.border = border;
+            }
+
+            const exportData = {
+                id: `custom-${Date.now()}`,
+                name: 'Exported Theme',
+                colors: theme
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `theme-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            statusDiv.textContent = '主题已导出';
+            setTimeout(() => statusDiv.textContent = '', 2000);
+        });
+
+        // 导入主题按钮
+        importThemeButton.addEventListener('click', () => {
+            importThemeFile.click();
+        });
+
+        importThemeFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedTheme = JSON.parse(event.target.result);
+
+                    if (!importedTheme.colors || !importedTheme.colors.bg || !importedTheme.colors.fg) {
+                        alert('无效的主题文件格式');
+                        return;
+                    }
+
+                    // 加载到表单
+                    document.getElementById('themeBg').value = importedTheme.colors.bg;
+                    document.getElementById('themeBgColor').value = importedTheme.colors.bg;
+                    document.getElementById('themeFg').value = importedTheme.colors.fg;
+                    document.getElementById('themeFgColor').value = importedTheme.colors.fg;
+
+                    if (importedTheme.colors.line) {
+                        document.getElementById('themeLine').value = importedTheme.colors.line;
+                        document.getElementById('themeLineColor').value = importedTheme.colors.line;
+                        enableOptionalColors.checked = true;
+                        optionalColorsContent.classList.add('show');
+                    }
+                    if (importedTheme.colors.accent) {
+                        document.getElementById('themeAccent').value = importedTheme.colors.accent;
+                        document.getElementById('themeAccentColor').value = importedTheme.colors.accent;
+                    }
+                    if (importedTheme.colors.muted) {
+                        document.getElementById('themeMuted').value = importedTheme.colors.muted;
+                        document.getElementById('themeMutedColor').value = importedTheme.colors.muted;
+                    }
+                    if (importedTheme.colors.surface) {
+                        document.getElementById('themeSurface').value = importedTheme.colors.surface;
+                        document.getElementById('themeSurfaceColor').value = importedTheme.colors.surface;
+                    }
+                    if (importedTheme.colors.border) {
+                        document.getElementById('themeBorder').value = importedTheme.colors.border;
+                        document.getElementById('themeBorderColor').value = importedTheme.colors.border;
+                    }
+
+                    statusDiv.textContent = '主题已导入';
+                    setTimeout(() => statusDiv.textContent = '', 2000);
+                } catch (error) {
+                    alert('导入失败: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+
+            // 重置文件输入
+            e.target.value = '';
         });
 
         async function loadDefaultMd() {
@@ -614,10 +1546,64 @@
                     documentPreviewDiv.appendChild(container);
                     if (segment.content.trim()) {
                         try {
-                            const renderId = `previewSvg-${segment.id}-${Date.now()}${Math.random().toString(16).slice(2)}`;
-                            const { svg } = await mermaid.render(renderId, segment.content);
-                            container.innerHTML = svg;
-                        } catch (e) { container.innerHTML = `<div class="error-message">Preview Error: ${e.str || e.message}</div>`; }
+                            // ===== 混合渲染逻辑 =====
+                            const diagramType = detectDiagramType(segment.content);
+                            const currentTheme = themeManager ? themeManager.getCurrentTheme() : { bg: '#ffffff', fg: '#09090b' };
+                            const currentOutputMode = outputMode.value;
+                            const useAsciiMode = useAscii.checked;
+
+                            // beautiful-mermaid 支持的类型
+                            // 注意：当前 beautiful-mermaid 0.1.3 的状态图渲染可能有问题，暂时使用 mermaid.js
+                            const supportedTypes = ['flowchart', 'sequence', 'class', 'er']; // 'state' 暂时移除
+
+                            // 检查是否强制使用经典模式
+                            const forceClassic = (currentOutputMode === 'classic');
+
+                            if (beautifulMermaidLoaded && supportedTypes.includes(diagramType) && !forceClassic) {
+                                // 使用 beautiful-mermaid 渲染
+                                console.log(`[beautiful-mermaid] 渲染类型: ${diagramType}, 模式: ${currentOutputMode}`);
+                                if (currentOutputMode === 'svg') {
+                                    // SVG 模式
+                                    const svg = await beautifulMermaid.renderMermaid(segment.content, currentTheme);
+                                    console.log(`[beautiful-mermaid] SVG 长度: ${svg.length}`);
+                                    container.innerHTML = svg;
+                                } else {
+                                    // ASCII 模式
+                                    const asciiArt = beautifulMermaid.renderMermaidAscii(segment.content, { useAscii: useAsciiMode });
+                                    container.className = 'ascii-preview-segment';
+                                    const pre = document.createElement('pre');
+                                    pre.textContent = asciiArt;
+
+                                    const copyBtn = document.createElement('button');
+                                    copyBtn.className = 'copy-ascii-btn';
+                                    copyBtn.textContent = t('copyAsciiButton');
+                                    copyBtn.onclick = () => {
+                                        navigator.clipboard.writeText(asciiArt).then(() => {
+                                            copyBtn.textContent = t('asciiCopied');
+                                            setTimeout(() => copyBtn.textContent = t('copyAsciiButton'), 2000);
+                                        });
+                                    };
+
+                                    container.appendChild(pre);
+                                    container.appendChild(copyBtn);
+                                }
+                            } else {
+                                // 使用原生 Mermaid.js 渲染（经典模式 / Gantt / Pie / Journey 等）
+                                if (currentOutputMode === 'ascii') {
+                                    // mermaid.js 不支持 ASCII，显示提示
+                                    container.innerHTML = `<div class="error-message">ASCII 模式不支持 ${diagramType} 图表类型（仅支持 Flowchart, Sequence, Class, ER）</div>`;
+                                } else {
+                                    // SVG 模式（包括 classic 模式）
+                                    const renderId = `previewSvg-${segment.id}-${Date.now()}${Math.random().toString(16).slice(2)}`;
+                                    const { svg } = await mermaid.render(renderId, segment.content);
+                                    container.innerHTML = svg;
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`[渲染错误] 图表类型: ${detectDiagramType(segment.content)}`, e);
+                            console.error(`[渲染错误] 代码:`, segment.content);
+                            container.innerHTML = `<div class="error-message">Preview Error: ${e.str || e.message || e}</div>`;
+                        }
                     } else { container.innerHTML = `<p><i>Empty Mermaid diagram (ID: ${segment.id})</i></p>`; }
                 }
             }
@@ -653,14 +1639,39 @@
         async function renderMermaidToPng(mermaidDefinition, diagramId) {
             if (!mermaidDefinition.trim()) return null;
             try {
-                const { svg } = await mermaid.render(`pngSvg-${diagramId}-${Date.now()}`, mermaidDefinition);
+                // ===== 混合渲染逻辑（DOCX 导出） =====
+                const diagramType = detectDiagramType(mermaidDefinition);
+                const currentTheme = themeManager ? themeManager.getCurrentTheme() : { bg: '#ffffff', fg: '#09090b' };
+                const currentOutputMode = outputMode.value;
+
+                // beautiful-mermaid 支持的类型
+                // 注意：当前 beautiful-mermaid 0.1.3 的状态图渲染可能有问题，暂时使用 mermaid.js
+                const supportedTypes = ['flowchart', 'sequence', 'class', 'er']; // 'state' 暂时移除
+
+                let svg;
+                let bgColor = 'white';
+
+                // DOCX 导出时，如果当前是经典模式，则所有图表使用 mermaid.js
+                const forceClassic = (currentOutputMode === 'classic');
+
+                if (beautifulMermaidLoaded && supportedTypes.includes(diagramType) && !forceClassic) {
+                    // 使用 beautiful-mermaid 渲染（应用主题）
+                    svg = await beautifulMermaid.renderMermaid(mermaidDefinition, currentTheme);
+                    bgColor = currentTheme.bg || 'white';
+                } else {
+                    // 使用原生 Mermaid.js 渲染（经典模式 / Gantt / Pie / Journey 等）
+                    const result = await mermaid.render(`pngSvg-${diagramId}-${Date.now()}`, mermaidDefinition);
+                    svg = result.svg;
+                    bgColor = 'white';
+                }
+
                 if (!svg) throw new Error("Mermaid.render failed: no SVG string.");
                 const parser = new DOMParser();
                 const svgDoc = parser.parseFromString(svg, "image/svg+xml");
                 const svgElement = svgDoc.documentElement;
                 if (svgElement.tagName === "parsererror" || !svgElement || svgElement.querySelector("parsererror")) throw new Error("Failed to parse SVG.");
 
-                svgElement.style.backgroundColor = "white";
+                svgElement.style.backgroundColor = bgColor;
                 svgElement.querySelectorAll("tspan, text").forEach(t => t.removeAttribute("xml:space"));
                 const cleanedSvgString = new XMLSerializer().serializeToString(svgElement);
 
@@ -678,7 +1689,7 @@
                         const scale = 1.5;
                         canvas.width = Math.max(1, Math.round(svgW * scale));
                         canvas.height = Math.max(1, Math.round(svgH * scale));
-                        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
                         if(scale !== 1.0) ctx.scale(scale, scale);
                         ctx.drawImage(img, 0, 0, svgW, svgH);
                         canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas toBlob failed.")), 'image/png');
@@ -804,12 +1815,12 @@
                                         bullet: tagName === 'ul' && !isTaskItem ? { level: level } : undefined, // No bullet for task items if prefix is used
                                         numbering: tagName === 'ol' ? { reference: "default-numbering", level: level } : undefined
                                     };
-                                    
+
                                     // 如果是任务列表项，手动添加缩进以匹配列表层级
                                     if (isTaskItem) {
                                         paragraphOptions.indent = { left: 720 * (level + 1) }; // 每级 720 单位
                                     }
-                                    
+
                                     elements.push(new docxGlobal.Paragraph(paragraphOptions));
                                     Array.from(li.children).forEach(childNodeInLi => {
                                         if (childNodeInLi.tagName.toLowerCase() === 'ul' || childNodeInLi.tagName.toLowerCase() === 'ol') {

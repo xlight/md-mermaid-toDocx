@@ -13,12 +13,14 @@
 
 - 📝 **Markdown 编辑器**：支持完整的 Markdown 语法
 - 📊 **Mermaid 图表**：支持流程图、时序图、类图等多种图表类型
+- 🎨 **主题配置**：15+ 精美主题，支持自定义颜色配置（Flowchart, State, Sequence, Class, ER 图表）
+- 🖼️ **ASCII 输出**：支持将图表导出为 ASCII/Unicode 文本格式（终端友好）
 - 👀 **实时预览**：编辑内容即时渲染预览
 - 🔄 **同步滚动**：编辑器和预览区域同步滚动，方便对照
 - 📱 **响应式布局**：宽屏时左右布局，窄屏时上下布局
 - 🌍 **多语言支持**：自动检测浏览器语言，支持简体中文和英文界面切换
-- 🎨 **丰富字体**：支持 20+ 种中英文字体选择
-- 📄 **DOCX 导出**：一键生成 Word 文档
+- 🎭 **丰富字体**：支持 20+ 种中英文字体选择
+- 📄 **DOCX 导出**：一键生成 Word 文档，图表高清晰度嵌入
 - 🖨️ **打印预览**：支持浏览器打印功能
 
 ## 🚀 在线使用
@@ -52,8 +54,55 @@ php -S localhost:8000
 
 1. 在左侧编辑器中输入 Markdown 内容
 2. 右侧会实时显示渲染预览
-3. 选择所需的字体
-4. 点击"生成 DOCX"下载 Word 文档
+3. 选择所需的字体和主题（支持 Flowchart, State, Sequence, Class, ER 图表主题化）
+4. 可选择 SVG 或 ASCII 输出模式
+5. 点击"生成 DOCX"下载 Word 文档
+
+### 主题配置（新功能！）
+
+应用现在支持 **beautiful-mermaid** 渲染引擎，为支持的图表类型提供精美主题：
+
+#### 支持主题的图表类型
+- ✅ **流程图** (Flowchart)
+- ✅ **时序图** (Sequence Diagram)
+- ✅ **类图** (Class Diagram)
+- ✅ **ER 图** (ER Diagram)
+- ⚠️ **状态图** (State Diagram) - 当前版本暂时使用原生 Mermaid.js 渲染（beautiful-mermaid 0.1.3 的状态图支持存在问题）
+
+#### 主题功能
+- **15+ 内置主题**：Tokyo Night, Catppuccin, Nord, Dracula, GitHub Dark/Light 等
+- **自定义主题**：通过颜色选择器自定义 bg (背景)、fg (前景)、line、accent、muted 等颜色
+- **主题持久化**：主题选择自动保存到浏览器本地存储
+- **导入/导出**：支持主题 JSON 导出和导入，方便分享和备份
+
+#### 其他图表类型
+不支持主题的图表类型（Gantt, Pie, Journey 等）将使用原生 Mermaid.js 渲染，保持默认样式。
+
+### 输出模式
+
+应用提供三种输出模式，可通过工具栏"输出"下拉菜单切换：
+
+#### 1. SVG (主题) - 默认模式
+- 使用 beautiful-mermaid 渲染支持的图表类型（Flowchart, Sequence, Class, ER）
+- 应用选中的主题颜色
+- 图表美观、专业
+- 支持所有主题功能
+
+#### 2. ASCII (文本) - 终端友好
+- 将图表渲染为纯文本格式
+- **Unicode 模式**：使用框绘字符（`┌─┐│└┘`）绘制图表，适合支持 Unicode 的终端
+- **纯 ASCII 模式**：使用纯 ASCII 字符（`+-|`）绘制图表，最大兼容性
+- **复制功能**：一键复制 ASCII 图表到剪贴板
+- **限制**：仅支持 beautiful-mermaid 引擎的图表类型（Flowchart, Sequence, Class, ER）
+
+#### 3. 经典 (兼容) - 完全兼容模式
+- 所有图表强制使用原生 Mermaid.js 渲染
+- 不应用自定义主题，使用 Mermaid 默认样式
+- 最大兼容性，支持所有 Mermaid 图表类型
+- 适用场景：
+  - 需要原生 Mermaid.js 的特定样式
+  - 调试主题渲染问题
+  - 确保图表在所有环境下一致显示
 
 ### 多语言界面
 
@@ -79,20 +128,45 @@ graph TD
 
 ### 支持的 Mermaid 图表类型
 
-- **流程图**：`graph` / `flowchart`
-- **时序图**：`sequenceDiagram`
-- **类图**：`classDiagram`
-- **状态图**：`stateDiagram`
+#### beautiful-mermaid 引擎（支持主题和 ASCII）
+- ✅ **流程图**：`graph` / `flowchart`
+- ✅ **时序图**：`sequenceDiagram`
+- ✅ **类图**：`classDiagram`
+- ✅ **ER 图**：`erDiagram`
+
+#### 原生 Mermaid.js 引擎（保持默认样式）
+- **状态图**：`stateDiagram` / `stateDiagram-v2` (暂时使用原生渲染)
 - **甘特图**：`gantt`
 - **饼图**：`pie`
-- **ER图**：`erDiagram`
 - **用户旅程图**：`journey`
+- **Git 图**：`gitGraph`
+- **思维导图**：`mindmap`
+- **时间线**：`timeline`
+- **象限图**：`quadrantChart`
+- **需求图**：`requirementDiagram`
+- **XY 图表**：`xychart-beta` 🔥
+- **桑基图**：`sankey-beta` 🔥
+- **块图**：`block-beta` 🔥
+- **ZenUML**：`zenuml` 🔥
+- **看板图**：`kanban` 🔥
+- **架构图**：`architecture-beta` 🔥
+- **C4 图**：`C4Context` / `C4Container` / `C4Component` 等 ⚠️
+- **包图**：`packet-beta` 🔥
+- **其他图表类型**
+
+> 🔥 标记表示 Mermaid 新增的图表类型  
+> ⚠️ 标记表示实验性功能  
+> **注意**：default.md 中现已包含 **20+ 种图表类型**的完整示例，涵盖常用和高级图表类型。
+
+**混合渲染**：应用会智能选择渲染引擎，确保所有 Mermaid 图表类型都能正常显示。
 
 ## 🛠️ 技术栈
 
 - **前端框架**：纯 JavaScript（无框架依赖）
 - **Markdown 渲染**：[Marked.js](https://marked.js.org/) v15.0.12
-- **图表渲染**：[Mermaid.js](https://mermaid.js.org/) v11.6.0
+- **图表渲染**：混合渲染引擎
+  - [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) v0.1.3（主题化图表）
+  - [Mermaid.js](https://mermaid.js.org/) v11.6.0（完整图表类型支持）
 - **DOCX 生成**：[docx](https://docx.js.org/) v9.5.0
 - **文件保存**：[FileSaver.js](https://github.com/eligrey/FileSaver.js) v2.0.5
 - **CDN 源**：[unpkg.com](https://unpkg.com/)（国内可用）
@@ -200,6 +274,9 @@ MIT License
 - ✅ 丰富的中文字体支持
 - ✅ 响应式设计
 - ✅ 自动部署到 GitHub Pages
+- ✅ **集成 beautiful-mermaid 主题系统**（新增）
+- ✅ **支持 ASCII/Unicode 图表输出**（新增）
+- ✅ **混合渲染引擎，兼容所有 Mermaid 图表类型**（新增）
 
 ## 📮 联系方式
 
