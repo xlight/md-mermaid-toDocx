@@ -50,7 +50,12 @@
                 svgModeDesc: '应用主题到支持的图表，其他图表使用原生样式',
                 asciiModeDesc: '将图表转换为纯文本格式，适合终端和聊天工具',
                 classicModeDesc: '所有图表使用原生 Mermaid.js 渲染，最大兼容性',
-                closeButton: '关闭'
+                closeButton: '关闭',
+                mathRendering: '数学公式',
+                mathGenerating: '正在渲染数学公式...',
+                mathRenderError: '数学公式渲染失败',
+                mathExportError: '数学公式导出失败',
+                mathJaxNotLoaded: 'MathJax 未加载，数学公式功能不可用'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
@@ -102,7 +107,12 @@
                 svgModeDesc: 'Apply themes to supported diagrams, others use native styles',
                 asciiModeDesc: 'Convert diagrams to plain text, suitable for terminals and chat tools',
                 classicModeDesc: 'All diagrams use native Mermaid.js rendering for maximum compatibility',
-                closeButton: 'Close'
+                closeButton: 'Close',
+                mathRendering: 'Math Formula',
+                mathGenerating: 'Rendering math formula...',
+                mathRenderError: 'Math formula rendering failed',
+                mathExportError: 'Math formula export failed',
+                mathJaxNotLoaded: 'MathJax not loaded, math formula feature unavailable'
             }
         };
 
@@ -205,7 +215,7 @@
             }
         });
 
-        // ===== CDN 加载检测 =====
+// ===== CDN 加载检测 =====
         // 检测 beautiful-mermaid 是否成功加载
         const beautifulMermaidLoaded = typeof beautifulMermaid !== 'undefined';
         if (!beautifulMermaidLoaded) {
@@ -214,6 +224,24 @@
         } else {
             console.log('✓ beautiful-mermaid 加载成功');
             console.log('✓ Mermaid.js 加载成功');
+        }
+
+        // 检测 MathJax 是否成功加载
+        const mathJaxLoaded = typeof MathJax !== 'undefined';
+        if (!mathJaxLoaded) {
+            console.warn('MathJax CDN 加载失败，数学公式渲染功能不可用。');
+            console.warn('备选 CDN: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js');
+        } else {
+            console.log('✓ MathJax 加载成功');
+        }
+
+// 检测 html2canvas 是否成功加载
+        const html2canvasLoaded = typeof html2canvas !== 'undefined';
+        if (!html2canvasLoaded) {
+            console.warn('html2canvas CDN 加载失败，数学公式导出为图片功能不可用。');
+            console.warn('备选 CDN: https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js');
+        } else {
+            console.log('✓ html2canvas 加载成功');
         }
 
         // ===== 图表类型检测函数 =====
@@ -726,21 +754,75 @@
             schedulePreviewUpdate();
         }
 
+        // ===== Marked.js 扩展：支持行内数学公式 =====
+        const inlineMathExtension = {
+            name: 'inlineMath',
+            level: 'inline',
+            start(src) {
+                // Match $ that's not part of $$
+                const match = src.match(/(?<!\$)\$(?!\$)/);
+                return match ? match.index : -1;
+            },
+            tokenizer(src, tokens) {
+                // Match inline math: $...$ (not preceded or followed by another $)
+                const rule = /(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)/;
+                const match = rule.exec(src);
+                if (match) {
+                    return {
+                        type: 'inlineMath',
+                        raw: match[0],
+                        text: match[1].trim()
+                    };
+                }
+                return undefined;
+            },
+            renderer(token) {
+                if (!mathJaxLoaded) {
+                    return `<span class="math-inline math-error">${token.text}</span>`;
+                }
+                try {
+                    // Render inline math using MathJax
+                    return `<span class="math-inline">${MathJax.tex2svg(token.text, {display: false}).outerHTML}</span>`;
+                } catch (e) {
+                    console.error('Math rendering error:', e);
+                    return `<span class="math-inline math-error">${token.text}</span>`;
+                }
+            }
+        };
+
+        // Register the extension with Marked.js
+        marked.use({ extensions: [inlineMathExtension] });
+
         function parseCombinedContentFromTextarea(rawText) {
             const structure = [];
-            const parts = rawText.split(/(\n?```(?:mermaid|math)\n[\s\S]*?\n```\n?)/g); // Also look for math blocks for future
+            // Split by code blocks (mermaid) and block math formulas ($$...$$)
+            const parts = rawText.split(/(\n?```(?:mermaid)\n[\s\S]*?\n```\n?|\$\$[\s\S]*?\$\$)/g);
             let counter = 0;
             for (const part of parts) {
                 if (!part || part.trim() === "") continue;
+                
+                // Match Mermaid code blocks
                 const mermaidMatch = part.match(/^\n?```mermaid\n([\s\S]*?)\n```\n?$/);
-                // const mathMatch = part.match(/^\n?```math\n([\s\S]*?)\n```\n?$/); // For future math support
-
                 if (mermaidMatch) {
                     structure.push({ type: 'mermaid', content: mermaidMatch[1].trim(), id: `mermaid-${counter++}` });
-                // } else if (mathMatch) {
-                //     structure.push({ type: 'math', content: mathMatch[1].trim(), id: `math-${counter++}` });
-                } else if (part.trim()) {
-                    structure.push({ type: 'markdown', content: part }); // Keep original spacing for markdown
+                    continue;
+                }
+                
+                // Match block math formulas ($$...$$)
+                const blockMathMatch = part.match(/^\$\$([\s\S]*?)\$\$$/);
+                if (blockMathMatch) {
+                    structure.push({ 
+                        type: 'math', 
+                        content: blockMathMatch[1].trim(), 
+                        id: `math-${counter++}`,
+                        isBlock: true 
+                    });
+                    continue;
+                }
+                
+                // Regular markdown content
+                if (part.trim()) {
+                    structure.push({ type: 'markdown', content: part });
                 }
             }
             return structure;
@@ -807,6 +889,25 @@
                     previewSegmentDiv.className = 'markdown-preview-segment';
                     previewSegmentDiv.innerHTML = marked.parse(segment.content, markedOptions);
                     documentPreviewDiv.appendChild(previewSegmentDiv);
+                } else if (segment.type === 'math' && segment.id) {
+                    // 处理数学公式段落
+                    const container = document.createElement('div');
+                    container.className = 'math-display-segment';
+                    container.id = `preview-${segment.id}`;
+                    documentPreviewDiv.appendChild(container);
+                    
+                    if (segment.content.trim()) {
+                        try {
+                            // 渲染数学公式
+                            const renderedMath = await renderMath(segment.content, segment.id);
+                            container.innerHTML = renderedMath;
+                        } catch (e) {
+                            console.error('[数学公式渲染错误]', e);
+                            container.innerHTML = `<div class="error-message">Math Rendering Error: ${e.message}</div>`;
+                        }
+                    } else {
+                        container.innerHTML = `<p><i>Empty math formula (ID: ${segment.id})</i></p>`;
+                    }
                 } else if (segment.type === 'mermaid' && segment.id) {
                     const container = document.createElement('div');
                     container.className = 'mermaid-preview-segment';
@@ -903,6 +1004,116 @@
         fontPicker.addEventListener('change', schedulePreviewUpdate);
         document.addEventListener('DOMContentLoaded', loadDefaultMd);
         printPreviewButton.addEventListener('click', () => window.print());
+
+        // ===== 数学公式渲染函数 =====
+        /**
+         * 渲染块级数学公式
+         * @param {string} latex - LaTeX 代码
+         * @param {string} containerId - 容器 ID
+         * @returns {Promise<string>} 渲染后的 HTML
+         */
+        async function renderMath(latex, containerId) {
+            if (!mathJaxLoaded) {
+                return `<div class="error-message">MathJax 未加载，无法渲染数学公式</div>`;
+            }
+            
+            try {
+                // 使用 MathJax 渲染公式
+                const svg = MathJax.tex2svg(latex, { display: true });
+                return svg.outerHTML;
+            } catch (e) {
+                console.error('数学公式渲染错误:', e);
+                return `<div class="error-message">数学公式渲染失败: ${e.message}</div>`;
+            }
+        }
+
+        /**
+         * 将数学公式渲染为 PNG 图片（用于 DOCX 导出）
+         * @param {string} latex - LaTeX 代码
+         * @param {string} formulaId - 公式 ID
+         * @param {boolean} isBlock - 是否为块级公式
+         * @returns {Promise<Blob|null>} PNG Blob 或 null
+         */
+        async function renderMathToPng(latex, formulaId, isBlock = true) {
+            if (!latex.trim()) return null;
+            if (!mathJaxLoaded) {
+                console.warn('MathJax 未加载，无法导出数学公式');
+                return null;
+            }
+            
+            try {
+                // 创建临时容器（用于获得稳定的 SVG 尺寸）
+                const tempContainer = document.createElement('div');
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.display = 'inline-block';
+                tempContainer.style.width = 'auto';
+                tempContainer.style.backgroundColor = 'transparent';
+                tempContainer.style.padding = '10px';
+                tempContainer.style.whiteSpace = 'nowrap';
+                document.body.appendChild(tempContainer);
+                
+                // 渲染数学公式（MathJax 返回容器，内部包含真正的 <svg>）
+                const mathNode = MathJax.tex2svg(latex, { display: isBlock });
+                tempContainer.appendChild(mathNode);
+                const svgElement = mathNode.querySelector('svg') || mathNode;
+                
+                // 等待布局稳定
+                await new Promise(resolve => requestAnimationFrame(resolve));
+
+                // 直接将 SVG 转为 PNG，避免 html2canvas 捕获辅助层导致重叠
+                const rect = svgElement.getBoundingClientRect();
+                const width = Math.max(1, Math.ceil(rect.width));
+                const height = Math.max(1, Math.ceil(rect.height));
+
+                const clonedSvg = svgElement.cloneNode(true);
+                clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                clonedSvg.setAttribute('width', String(width));
+                clonedSvg.setAttribute('height', String(height));
+                if (!clonedSvg.getAttribute('viewBox')) {
+                    clonedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                }
+
+                const serializedSvg = new XMLSerializer().serializeToString(clonedSvg);
+                const svgBlob = new Blob([serializedSvg], { type: 'image/svg+xml;charset=utf-8' });
+                const svgUrl = URL.createObjectURL(svgBlob);
+
+                const image = new Image();
+                image.src = svgUrl;
+                await new Promise((resolve, reject) => {
+                    image.onload = resolve;
+                    image.onerror = reject;
+                });
+
+                const scale = 2;
+                const canvas = document.createElement('canvas');
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(scale, scale);
+                ctx.drawImage(image, 0, 0, width, height);
+
+                URL.revokeObjectURL(svgUrl);
+                
+                // 移除临时容器
+                document.body.removeChild(tempContainer);
+                
+                // 转换为 Blob
+                return new Promise((resolve, reject) => {
+                    canvas.toBlob(blob => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Canvas toBlob failed'));
+                        }
+                    }, 'image/png');
+                });
+            } catch (e) {
+                console.error(`Error in renderMathToPng for ${formulaId}:`, e);
+                return null;
+            }
+        }
 
         async function renderMermaidToPng(mermaidDefinition, diagramId) {
             if (!mermaidDefinition.trim()) return null;
@@ -1221,6 +1432,51 @@
                     if (segment.type === 'markdown' && segment.content.trim()) {
                         const markdownElements = parseMarkdownToDocxElements(segment.content, docxGlobal);
                         finalDocChildren.push(...markdownElements);
+                    } else if (segment.type === 'math' && segment.id) {
+                        // 处理数学公式导出
+                        statusDiv.textContent = `${t('generating')} Math ${segment.id}...`;
+                        const pngBlob = await renderMathToPng(segment.content, segment.id, segment.isBlock);
+                        if (pngBlob) {
+                            const imageBuffer = await pngBlob.arrayBuffer();
+                            const tempImg = new Image(); tempImg.src = URL.createObjectURL(pngBlob);
+                            await new Promise(r => tempImg.onload=r); URL.revokeObjectURL(tempImg.src);
+                            if (tempImg.naturalWidth > 0 && tempImg.naturalHeight > 0) {
+                                // 计算缩放比例以适应页面宽度
+                                let finalWidth = tempImg.naturalWidth;
+                                let finalHeight = tempImg.naturalHeight;
+                                
+                                if (finalWidth > MAX_IMAGE_WIDTH_PIXELS) {
+                                    const scale = MAX_IMAGE_WIDTH_PIXELS / finalWidth;
+                                    finalWidth = MAX_IMAGE_WIDTH_PIXELS;
+                                    finalHeight = Math.round(tempImg.naturalHeight * scale);
+                                }
+                                
+                                finalDocChildren.push(new docxGlobal.Paragraph({
+                                    children: [new docxGlobal.ImageRun({ 
+                                        data: imageBuffer, 
+                                        transformation: { width: finalWidth, height: finalHeight }, 
+                                        type: "png", 
+                                        fileName: `${segment.id}.png` 
+                                    })],
+                                    alignment: docxGlobal.AlignmentType.CENTER,
+                                    spacing: { before: 200, after: 200 }
+                                }));
+                            } else {
+                                finalDocChildren.push(new docxGlobal.Paragraph({
+                                    children: [new docxGlobal.TextRun({
+                                        text: `[Math formula ${segment.id} invalid dimensions]`,
+                                        italics: true
+                                    })]
+                                }));
+                            }
+                        } else {
+                            finalDocChildren.push(new docxGlobal.Paragraph({
+                                children: [new docxGlobal.TextRun({
+                                    text: `[Math formula ${segment.id} could not generate]`,
+                                    italics: true
+                                })]
+                            }));
+                        }
                     } else if (segment.type === 'mermaid' && segment.id) {
                         statusDiv.textContent = `${t('generating')} Mermaid ${segment.id}...`;
                         const pngBlob = await renderMermaidToPng(segment.content, segment.id);

@@ -507,3 +507,42 @@
         .output-mode-help li strong {
             color: #333;
         }
+
+        /* ===== 数学公式样式 ===== */
+        
+        /* 行内数学公式 */
+        .math-inline {
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 2px;
+        }
+        
+        .math-inline svg {
+            display: inline;
+            vertical-align: middle;
+        }
+        
+        /* 块级数学公式 */
+        .math-display-segment {
+            display: block;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        
+        .math-display-segment svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* 数学公式错误样式 */
+        .math-error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
