@@ -55,7 +55,8 @@
                 mathGenerating: '正在渲染数学公式...',
                 mathRenderError: '数学公式渲染失败',
                 mathExportError: '数学公式导出失败',
-                mathJaxNotLoaded: 'MathJax 未加载，数学公式功能不可用'
+                mathJaxNotLoaded: 'MathJax 未加载，数学公式功能不可用',
+                viewModePlaceholder: 'Split / Preview（即将支持）'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
@@ -112,7 +113,8 @@
                 mathGenerating: 'Rendering math formula...',
                 mathRenderError: 'Math formula rendering failed',
                 mathExportError: 'Math formula export failed',
-                mathJaxNotLoaded: 'MathJax not loaded, math formula feature unavailable'
+                mathJaxNotLoaded: 'MathJax not loaded, math formula feature unavailable',
+                viewModePlaceholder: 'Split / Preview (Coming Soon)'
             }
         };
 
