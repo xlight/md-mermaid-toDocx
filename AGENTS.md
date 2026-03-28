@@ -1,360 +1,227 @@
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+# Agent 编码指南 - md-mermaid-toDocx
 
-## 使用中文
- - LLM 输出的 thinking 和内容使用中文
- - 代码注释使用中文
- - 文档使用中文
+## 项目概述
 
-These instructions are for AI assistants working in this project.
+将 Markdown、Mermaid 图表和 LaTeX 数学公式转换为 DOCX 的 Web 应用。
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+**技术栈**：纯前端应用，无构建系统，CDN 加载依赖
+**核心文件**：`index.html` + `app.js` + `styles.css`
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+## 构建/测试命令
 
-Keep this managed block so 'openspec update' can refresh the instructions.
+### 运行应用
+直接使用浏览器打开 index.html
 
-<!-- OPENSPEC:END -->
+### 测试
+- **无自动化测试**，仅手动测试
+- 测试清单：
+  - Markdown 渲染
+  - Mermaid 图表渲染（Flowchart、Sequence、Gantt 等）
+  - 数学公式渲染（行内公式 `$...$` 和块级公式 `$$...$$`）
+  - DOCX 导出
+  - 字体选择
+  - 语言切换（中/英）
+  - 主题应用
+  - ASCII 输出模式
+  - 同步滚动
 
-# Agent Coding Guidelines for md-mermaid-toDocx
+### 代码检查
+- 无配置 linter
+- 遵循现有代码风格
 
-## 使用中文
- - LLM 输出的 thinking 和内容使用中文
- - 代码注释使用中文
- - 文档使用中文
+## 代码规范
 
-## Overview
-This document provides guidelines for agentic coding assistants working in this repository.
-
-## Project Overview
-
-This is a single-file web application (`index.html`) that converts Markdown and Mermaid diagrams to DOCX format. It runs entirely in the browser with no build system, no package.json, and no npm dependencies. All libraries are loaded via CDN.
-
-## Build/Lint/Test Commands
-
-### No Build System
-This project has **NO build system**. There is no `package.json`, no npm, no webpack, no bundler.
-
-### Running the Application
-Since the app uses ES modules and Fetch API, it must be served over HTTP:
-
-```bash
-# Python 3
-python -m http.server 8000
-
-# Python 2
-python -m SimpleHTTPServer 8000
-
-# Node.js (if available)
-npx serve
-
-# PHP
-php -S localhost:8000
+### 文件结构
+```
+index.html    # HTML 结构 + CDN 引用
+app.js        # JavaScript 逻辑（已分离）
+styles.css    # CSS 样式（已分离）
+default.md    # 默认加载内容
 ```
 
-Then access: `http://localhost:8000`
+### JavaScript 规范
 
-### Testing
-- **No automated tests** exist in this project
-- Manual testing only: Open `http://localhost:8000` and verify functionality
-- Test checklist:
-  - Markdown rendering in preview
-  - Mermaid diagram rendering
-  - DOCX generation and download
-  - Font selection
-  - Language switching (Chinese/English)
-  - Scroll synchronization between editor and preview
-  - Print preview functionality
-
-### Linting
-- No linters configured
-- Code is vanilla JavaScript (ES6+)
-- Follow existing code style patterns
-
-## Code Style Guidelines
-
-### File Organization
-- **ALL code is in `index.html`**: HTML structure, CSS styles, and JavaScript logic
-- No separate `.js` or `.css` files
-- No build process or file concatenation
-
-### JavaScript Style
-
-#### Variable Declarations
+**变量声明**：
 ```javascript
-// Use const for values that won't be reassigned
-const documentPreviewDiv = document.getElementById('documentPreview');
-const i18n = { /* ... */ };
-
-// Use let for values that will change
-let debounceTimerPreview;
-let isSyncingScroll = false;
-let currentLang = 'zh-CN';
-
-// NEVER use var
+const statusDiv = document.getElementById('status');  // 不变值
+let debounceTimer;                                     // 可变值
+// 禁止使用 var
 ```
 
-#### Naming Conventions
-- **camelCase** for variables and functions: `combinedContentInput`, `applyLanguage()`
-- **PascalCase** for classes (when using external libraries): `new docx.Document()`
-- **Descriptive names**: Prefer clarity over brevity
-  - Good: `documentPreviewDiv`, `updateFullPreview()`
-  - Bad: `div`, `update()`
+**命名**：
+- 变量/函数：`camelCase`（`combinedContentInput`, `applyLanguage()`）
+- 类：`PascalCase`（`new ThemeManager()`）
+- DOM 元素引用：描述性名称（`documentPreviewDiv`）
 
-#### Function Declarations
+**函数**：
 ```javascript
-// Use function declarations for top-level functions
-function applyLanguage(lang) { /* ... */ }
+// 顶层函数声明
+function applyLanguage(lang) { }
 
-// Use async functions for asynchronous operations
-async function loadDefaultMd() { /* ... */ }
-async function updateFullPreview() { /* ... */ }
+// 异步函数
+async function loadDefaultMd() { }
 
-// Use arrow functions for callbacks
-combinedContentInput.addEventListener('input', schedulePreviewUpdate);
-document.querySelectorAll('[data-i18n]').forEach(el => { /* ... */ });
+// 回调使用箭头函数
+input.addEventListener('input', () => scheduleUpdate());
 ```
 
-#### Comments
-- Use Chinese comments for Chinese-language specific features
-- Use English comments for technical implementation details
-- Include explanatory comments for complex logic:
+**注释**：
 ```javascript
+// 中文注释说明功能（中文特性）
+// English comments for technical details
 // 防止循环触发 (Prevent infinite loop)
-let isSyncingScroll = false;
-
-// Debounce preview updates to improve performance
-clearTimeout(debounceTimerPreview);
 ```
 
-### HTML/CSS Style
-
-#### HTML
-- Use semantic HTML5 elements
-- Use `data-*` attributes for internationalization: `data-i18n="key"`
-- Keep accessibility in mind (ARIA attributes where needed)
-
-#### CSS
-```css
-/* Use clear class names */
-.toolbar { }
-.editor-wrapper { }
-.preview-wrapper { }
-
-/* Use media queries for responsive design */
-@media (min-width: 1024px) {
-    .editor-preview-container {
-        flex-direction: row;
+### 异步处理
+```javascript
+// 优先使用 async/await，避免 .then() 链
+async function renderMermaid(code) {
+    try {
+        const { svg } = await mermaid.render(id, code);
+        return svg;
+    } catch (e) {
+        console.error('渲染失败:', e);
+        throw e;
     }
 }
-
-/* Use print-specific styles */
-@media print {
-    /* ... */
-}
 ```
 
-### Error Handling
+### 错误处理
 ```javascript
-// Use try-catch for async operations
 try {
     const response = await fetch('default.md');
     if (!response.ok) throw new Error(`Error: ${response.statusText}`);
-    // ...
 } catch (error) {
-    console.error("Error loading default.md:", error);
-    statusDiv.textContent = `${t('defaultLoadError')}${error.message}`;
-}
-
-// Provide user-friendly error messages
-// Use i18n for error messages
-statusDiv.textContent = `${t('error')}${e.message}`;
-```
-
-### Async/Await Patterns
-```javascript
-// Prefer async/await over .then() chains
-async function renderMermaidToPng(mermaidDefinition, diagramId) {
-    try {
-        const { svg } = await mermaid.render(`pngSvg-${diagramId}`, mermaidDefinition);
-        // ... process svg
-        return pngBlob;
-    } catch (e) {
-        console.error(`Error in renderMermaidToPng:`, e);
-        return null;
-    }
+    console.error('加载失败:', error);
+    statusDiv.textContent = t('error') + error.message;
 }
 ```
 
-### DOM Manipulation
+### DOM 操作
 ```javascript
-// Cache DOM element references
+// 缓存 DOM 引用
 const combinedContentInput = document.getElementById('combinedContentInput');
 
-// Use querySelector for complex selections
+// 使用 querySelector
 const codeElement = node.querySelector('code');
 
-// Use querySelectorAll with forEach for multiple elements
-document.querySelectorAll('[data-i18n]').forEach(el => {
-    // ...
-});
-
-// Manipulate DOM efficiently
-documentPreviewDiv.innerHTML = ''; // Clear before rebuilding
+// 批量操作
+nodes.forEach(node => processNode(node));
 ```
 
-### Event Handling
-```javascript
-// Add event listeners after DOM is ready
-document.addEventListener('DOMContentLoaded', loadDefaultMd);
-
-// Use named functions or arrow functions
-combinedContentInput.addEventListener('input', schedulePreviewUpdate);
-generateDocxButton.addEventListener('click', async () => {
-    // ... handler code
-});
-```
-
-## Internationalization (i18n)
-
-### Adding New Translatable Text
-1. Add key-value pairs to both `zh-CN` and `en` objects in the `i18n` object
-2. Use `data-i18n="key"` attribute in HTML for element text
-3. Use `data-i18n-placeholder="key"` for input placeholders
-4. In JavaScript, use `t('key')` to get translated text
+### 国际化 (i18n)
+所有用户可见文本必须使用 i18n：
 
 ```javascript
-// i18n object
+// 1. 在 i18n 对象添加中英双语
 const i18n = {
-    'zh-CN': { newKey: '中文文本' },
-    'en': { newKey: 'English Text' }
+    'zh-CN': { myKey: '中文文本' },
+    'en': { myKey: 'English Text' }
 };
 
-// HTML
-<button data-i18n="newKey">Default Text</button>
+// 2. HTML 使用 data-i18n 属性
+<button data-i18n="myKey">默认文本</button>
 
-// JavaScript
-statusDiv.textContent = t('newKey');
+// 3. JS 中使用 t() 函数
+statusDiv.textContent = t('myKey');
 ```
 
-## Libraries and Dependencies
+## 依赖库
 
-All dependencies loaded via CDN (unpkg.com):
-- **Mermaid.js** v11.6.0: Diagram rendering
-- **Marked.js** v15.0.12: Markdown parsing
-- **docx** v9.5.0: DOCX generation
-- **FileSaver.js** v2.0.5: File download
+所有库通过 CDN 加载（unpkg.com）：
+- **Mermaid.js** v11.12.2：图表渲染
+- **beautiful-mermaid** v0.1.3：主题化渲染
+- **Marked.js** v15.0.12：Markdown 解析
+- **MathJax** v3：数学公式渲染
+- **html2canvas** v1.4.1：Mermaid/HTML 截图导出（保留用于其他场景）
+- **docx** v9.5.0：DOCX 生成
+- **FileSaver.js** v2.0.5：文件下载
 
-**NEVER** install npm packages or create package.json. All libraries must be CDN-based.
+**禁止**：安装 npm 包、创建 package.json、使用构建工具
 
-## Important Implementation Details
+## OpenSpec 工作流
 
-### Scroll Synchronization
-- Uses `isSyncingScroll` flag to prevent infinite loops
-- Uses `isUpdatingPreview` flag to prevent sync during preview updates
-- Calculates scroll percentage: `scrollTop / (scrollHeight - clientHeight)`
+本项目使用 OpenSpec 管理变更：
 
-### Preview Updates
-- Debounced with 500ms delay to improve performance
-- Clears and rebuilds entire preview on each update
-- Preserves scroll position by calculating percentage before update
+```bash
+# 开始新变更
+/opsx-new-change
 
-### Mermaid Rendering
-- Preview: Uses `mermaid.render()` to generate SVG
-- DOCX: Converts SVG to PNG via canvas for embedding
-- Each diagram needs unique ID to prevent conflicts
+# 继续当前变更
+/opsx-continue-change
 
-### DOCX Generation
-- Uses custom styles for headings, code blocks, quotes
-- Supports inline formatting: bold, italic, strikethrough, code
-- Tables rendered with borders
-- Mermaid diagrams embedded as PNG images
-- Filename extracted from first heading or first non-empty line
+# 实施变更
+/opsx-apply-change
 
-## File Naming Conventions
+# 验证变更
+/opsx-verify-change
 
-### Documentation Files
-- `readme.md`: Main project documentation
-- `DEPLOY.md`, `QUICKSTART.md`, etc.: Uppercase for guides
-- `default.md`: Default content loaded in editor
+# 归档完成变更
+/opsx-archive-change
+```
 
-### Code Files
-- `index.html`: Single application file
-- `.github/workflows/deploy.yml`: GitHub Actions workflow
+## 重要实现细节
 
-## Git Workflow
+### 图表渲染策略
+1. **beautiful-mermaid**：支持主题的图表（Flowchart、Sequence、Class、ER）
+2. **原生 Mermaid.js**：其他图表类型（Gantt、Pie、Journey 等）
 
-### Commits
-- Use descriptive commit messages in English
-- Include Chinese translation in parentheses if relevant
+### 数学公式渲染策略
+1. **MathJax v3**：渲染 LaTeX 数学公式
+2. **行内公式**：`$...$` 语法，通过 Marked.js 扩展实现
+3. **块级公式**：`$$...$$` 语法，通过 parseCombinedContentFromTextarea() 解析
+4. **DOCX 导出**：先序列化 MathJax 生成的 SVG，再通过 Canvas 转换为 PNG 图片嵌入（避免公式双层重叠）
 
-### Deployment
-- Pushing to `main` or `master` triggers GitHub Actions
-- Deploys to GitHub Pages automatically
-- No build step required
+### 输出模式
+- **SVG**：图形模式，支持主题
+- **ASCII**：文本模式，仅支持 beautiful-mermaid 图表
+- **Classic**：兼容模式，全部使用原生 Mermaid.js
 
-## Common Tasks
+### 性能优化
+- 预览更新防抖：500ms
+- 同步滚动使用百分比计算
+- 图表渲染使用唯一 ID 防冲突
 
-### Adding a New Feature
-1. Edit `index.html` directly
-2. Add HTML structure, CSS styles, and JavaScript logic in appropriate sections
-3. Add i18n strings if feature has UI text
-4. Test locally with HTTP server
-5. Commit and push (auto-deploys)
+## Git 工作流
 
-### Fixing a Bug
-1. Locate code in `index.html` (all code is there)
-2. Make fix
-3. Test thoroughly in browser
-4. Commit with descriptive message
+### 提交规范
+- 使用英文描述性提交信息
+- 相关中文可放括号内
 
-### Updating Dependencies
-Change version numbers in CDN URLs:
+### 部署
+- 推送到 `main` 自动触发 GitHub Actions 部署到 Pages
+- 无需构建步骤
+
+## 常见任务
+
+### 添加新功能
+1. 编辑 `index.html`/`app.js`/`styles.css`
+2. 添加 i18n 字符串
+3. 本地 HTTP 服务器测试
+4. 提交推送（自动部署）
+
+### 更新依赖
+修改 CDN URL 中的版本号：
 ```html
 <script src="https://unpkg.com/mermaid@11.6.0/dist/mermaid.min.js"></script>
 ```
 
-## Browser Compatibility
-- Target: Modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
-- Uses ES6+ features: async/await, arrow functions, template literals
-- Uses Fetch API (no XMLHttpRequest)
-- Uses modern CSS (Flexbox, CSS Grid not used but supported)
+## 避免的反模式
 
-## Performance Considerations
-- **Debouncing**: Preview updates debounced at 500ms
-- **Large files**: No special handling; may be slow
-- **Image rendering**: Mermaid PNG conversion can be slow for complex diagrams
-- **DOM manipulation**: Full rebuild on each preview update
+❌ 不要添加 npm 依赖
+❌ 不要使用 var
+❌ 不要硬编码用户可见文本
+❌ 不要忘记错误处理
+❌ 不要忽略双语测试
 
-## Security Considerations
-- Mermaid `securityLevel: 'loose'` allows HTML in diagrams
-- No user data sent to servers (fully client-side)
-- No authentication/authorization needed
+## 最佳实践
 
-## Anti-Patterns to Avoid
-- ❌ Don't create separate .js or .css files
-- ❌ Don't add package.json or npm dependencies
-- ❌ Don't use build tools (webpack, rollup, etc.)
-- ❌ Don't use var for variable declarations
-- ❌ Don't use .then() chains (prefer async/await)
-- ❌ Don't hardcode user-facing text (use i18n)
-- ❌ Don't ignore error handling
-- ❌ Don't forget to test in both languages (Chinese/English)
-
-## Best Practices
-- ✅ Keep all code in `index.html`
-- ✅ Use const/let appropriately
-- ✅ Add both English and Chinese comments where helpful
-- ✅ Use async/await for asynchronous code
-- ✅ Add i18n support for all user-facing text
-- ✅ Cache DOM element references
-- ✅ Use descriptive variable and function names
-- ✅ Test manually in browser after changes
-- ✅ Use try-catch for error handling
-- ✅ Preserve existing code style and patterns
+✅ 保持代码在现有文件中
+✅ 正确使用 const/let
+✅ 中英文注释结合
+✅ 使用 async/await
+✅ 全面 i18n 支持
+✅ 缓存 DOM 引用
+✅ 描述性命名
+✅ 浏览器手动测试
+✅ try-catch 错误处理

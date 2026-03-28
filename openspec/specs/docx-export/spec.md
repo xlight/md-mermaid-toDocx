@@ -8,7 +8,7 @@
 
 ### Requirement: Mermaid 图表导出到 DOCX
 
-系统 SHALL 使用混合渲染策略将 Mermaid 图表转换为 PNG 图片并嵌入到 DOCX 文档中。对于 beautiful-mermaid 支持的图表类型（Flowchart, State, Sequence, Class, ER），系统使用 beautiful-mermaid 渲染引擎并应用用户选择的主题；对于其他图表类型（Gantt, Pie, Journey 等），系统使用原 mermaid.js 渲染引擎。导出的图表必须不超出页面的可用宽度范围，并保持高清晰度。
+系统 SHALL 使用混合渲染策略将 Mermaid 图表转换为 PNG 图片并嵌入到 DOCX 文档中。对于 beautiful-mermaid 支持的图表类型（Flowchart, State, Sequence, Class, ER），系统使用 beautiful-mermaid 渲染引擎并应用用户选择的主题；对于其他图表类型（Gantt, Pie, Journey 等），系统使用原 mermaid.js 渲染引擎。导出的图表必须不超出页面的可用宽度范围，并保持高清晰度。导出入口在单层工具栏中 MUST 保持清晰、稳定且高优先级，以支持用户快速完成导出操作。
 
 #### Scenario: 导出 beautiful-mermaid 支持的图表类型（主题化）
 
@@ -80,6 +80,16 @@
 - **THEN** 系统捕获错误并在 DOCX 中插入错误提示文本
 - **AND** 错误提示包含具体的错误信息（如 "[Mermaid Error: Invalid gantt syntax]"）
 - **AND** 不中断整个 DOCX 导出流程，继续处理其他内容
+
+#### Scenario: 单层工具栏中导出入口优先级明确
+
+- **WHEN** 用户查看顶部单层工具栏
+- **THEN** "生成 DOCX" 入口在视觉上保持高优先级，易于快速识别和触发
+
+#### Scenario: 单层工具栏布局调整后导出入口仍稳定可见
+
+- **WHEN** 工具栏经过信息层级整理与空间压缩
+- **THEN** 用户仍可在不展开额外设置层的情况下直接访问 DOCX 导出入口
 
 ### Requirement: Mermaid 图表主题配置
 

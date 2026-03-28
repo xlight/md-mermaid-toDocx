@@ -56,7 +56,9 @@
                 mathRenderError: '数学公式渲染失败',
                 mathExportError: '数学公式导出失败',
                 mathJaxNotLoaded: 'MathJax 未加载，数学公式功能不可用',
-                viewModePlaceholder: 'Split / Preview（即将支持）'
+                viewModeSplit: '分栏',
+                viewModeEditor: '仅编辑',
+                viewModePreview: '仅预览'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
@@ -114,7 +116,9 @@
                 mathRenderError: 'Math formula rendering failed',
                 mathExportError: 'Math formula export failed',
                 mathJaxNotLoaded: 'MathJax not loaded, math formula feature unavailable',
-                viewModePlaceholder: 'Split / Preview (Coming Soon)'
+                viewModeSplit: 'Split',
+                viewModeEditor: 'Editor',
+                viewModePreview: 'Preview'
             }
         };
 
@@ -162,6 +166,8 @@
         const generateDocxButton = document.getElementById('generateDocxButton');
         const printPreviewButton = document.getElementById('printPreviewButton');
         const statusDiv = document.getElementById('status');
+        const toastContainer = document.getElementById('toastContainer');
+        const toolbarProgressLine = document.getElementById('toolbarProgress');
         const documentPreviewDiv = document.getElementById('documentPreview');
         const fontPicker = document.getElementById('fontPicker');
         const langPicker = document.getElementById('langPicker');
@@ -188,9 +194,181 @@
         const closeMermaidConfigModal = document.getElementById('closeMermaidConfigModal');
         const closeMermaidConfigButton = document.getElementById('closeMermaidConfigButton');
 
+        // 工作区布局相关 DOM 元素
+        const editorPreviewContainer = document.querySelector('.editor-preview-container');
+        const editorWrapper = document.querySelector('.editor-wrapper');
+        const previewWrapper = document.querySelector('.preview-wrapper');
+        const splitDivider = document.getElementById('splitDivider');
+        const viewModeSplitButton = document.getElementById('viewModeSplit');
+        const viewModeEditorButton = document.getElementById('viewModeEditor');
+        const viewModePreviewButton = document.getElementById('viewModePreview');
+
         let debounceTimerPreview;
         let isSyncingScroll = false; // 防止循环触发
         let isUpdatingPreview = false; // 防止预览更新时触发同步滚动
+
+        // ===== 工作区模式状态（会话内） =====
+        const WORKSPACE_MODE = {
+            SPLIT: 'split',
+            EDITOR_ONLY: 'editor-only',
+            PREVIEW_ONLY: 'preview-only'
+        };
+        const DESKTOP_BREAKPOINT = 1024;
+        const EDITOR_MIN_WIDTH = 280;
+        const PREVIEW_MIN_WIDTH = 320;
+        const DEFAULT_SPLIT_RATIO = 0.5;
+
+        let workspaceMode = WORKSPACE_MODE.SPLIT;
+        let lastSplitRatio = DEFAULT_SPLIT_RATIO;
+        let isDividerDragging = false;
+        let pendingSplitRatio = DEFAULT_SPLIT_RATIO;
+
+        function setStatusText(message) {
+            if (!statusDiv) return;
+            statusDiv.textContent = message || '';
+        }
+
+        function setToolbarProgress(active) {
+            if (!toolbarProgressLine) return;
+            if (active) {
+                toolbarProgressLine.classList.add('active');
+            } else {
+                toolbarProgressLine.classList.remove('active');
+            }
+        }
+
+        function showToast(message, type = 'info', options = {}) {
+            if (!toastContainer || !message) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            const content = document.createElement('span');
+            content.textContent = message;
+            toast.appendChild(content);
+
+            const persistent = options.persistent || type === 'error';
+            const duration = options.duration || (type === 'success' ? 2200 : 1800);
+
+            if (persistent) {
+                const closeButton = document.createElement('button');
+                closeButton.className = 'toast-close';
+                closeButton.type = 'button';
+                closeButton.textContent = '×';
+                closeButton.addEventListener('click', () => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 180);
+                });
+                toast.appendChild(closeButton);
+            }
+
+            toastContainer.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+
+            if (!persistent) {
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 180);
+                }, duration);
+            }
+        }
+
+        function isDesktopLayout() {
+            return window.innerWidth >= DESKTOP_BREAKPOINT;
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function setViewModeButtonsState(mode) {
+            if (!viewModeSplitButton || !viewModeEditorButton || !viewModePreviewButton) return;
+
+            viewModeSplitButton.classList.toggle('active', mode === WORKSPACE_MODE.SPLIT);
+            viewModeEditorButton.classList.toggle('active', mode === WORKSPACE_MODE.EDITOR_ONLY);
+            viewModePreviewButton.classList.toggle('active', mode === WORKSPACE_MODE.PREVIEW_ONLY);
+        }
+
+        function applySplitRatio(ratio) {
+            if (!editorWrapper || !previewWrapper) return;
+            const safeRatio = clamp(ratio, 0.15, 0.85);
+            editorWrapper.style.flexBasis = `${(safeRatio * 100).toFixed(2)}%`;
+            previewWrapper.style.flexBasis = `${((1 - safeRatio) * 100).toFixed(2)}%`;
+            pendingSplitRatio = safeRatio;
+        }
+
+        function applyWorkspaceMode(mode, options = {}) {
+            if (!editorPreviewContainer || !editorWrapper || !previewWrapper) return;
+
+            const shouldRender = options.triggerRender === true;
+            const isDesktop = isDesktopLayout();
+
+            workspaceMode = mode;
+            editorPreviewContainer.dataset.viewMode = mode;
+
+            if (mode === WORKSPACE_MODE.SPLIT) {
+                editorWrapper.style.display = '';
+                previewWrapper.style.display = '';
+                if (isDesktop) {
+                    applySplitRatio(lastSplitRatio);
+                } else {
+                    editorWrapper.style.flexBasis = '';
+                    previewWrapper.style.flexBasis = '';
+                }
+            } else if (mode === WORKSPACE_MODE.EDITOR_ONLY) {
+                editorWrapper.style.display = '';
+                previewWrapper.style.display = 'none';
+            } else if (mode === WORKSPACE_MODE.PREVIEW_ONLY) {
+                editorWrapper.style.display = 'none';
+                previewWrapper.style.display = '';
+            }
+
+            setViewModeButtonsState(mode);
+
+            if (shouldRender) {
+                schedulePreviewUpdate();
+            }
+        }
+
+        function calculateSplitRatioByPointer(clientX) {
+            const rect = editorPreviewContainer.getBoundingClientRect();
+            const rawX = clientX - rect.left;
+            const clampedX = clamp(rawX, 0, rect.width);
+            return rect.width > 0 ? clampedX / rect.width : DEFAULT_SPLIT_RATIO;
+        }
+
+        function handleDividerMouseMove(event) {
+            if (!isDividerDragging || workspaceMode !== WORKSPACE_MODE.SPLIT || !isDesktopLayout()) return;
+            const ratio = calculateSplitRatioByPointer(event.clientX);
+            applySplitRatio(ratio);
+        }
+
+        function handleDividerMouseUp() {
+            if (!isDividerDragging) return;
+
+            isDividerDragging = false;
+            editorPreviewContainer.classList.remove('resizing');
+            window.removeEventListener('mousemove', handleDividerMouseMove);
+            window.removeEventListener('mouseup', handleDividerMouseUp);
+
+            const totalWidth = editorPreviewContainer.getBoundingClientRect().width;
+            const editorWidth = pendingSplitRatio * totalWidth;
+            const previewWidth = totalWidth - editorWidth;
+
+            if (editorWidth < EDITOR_MIN_WIDTH) {
+                applyWorkspaceMode(WORKSPACE_MODE.PREVIEW_ONLY, { triggerRender: true });
+                showToast('已自动切换到仅预览模式', 'info', { duration: 1200 });
+                return;
+            }
+
+            if (previewWidth < PREVIEW_MIN_WIDTH) {
+                applyWorkspaceMode(WORKSPACE_MODE.EDITOR_ONLY, { triggerRender: true });
+                showToast('已自动切换到仅编辑模式', 'info', { duration: 1200 });
+                return;
+            }
+
+            lastSplitRatio = pendingSplitRatio;
+            applyWorkspaceMode(WORKSPACE_MODE.SPLIT, { triggerRender: true });
+        }
 
         // 初始化语言
         applyLanguage(currentLang);
@@ -199,6 +377,52 @@
         langPicker.addEventListener('change', (e) => {
             applyLanguage(e.target.value);
         });
+
+        // 工作区模式切换事件
+        if (viewModeSplitButton) {
+            viewModeSplitButton.addEventListener('click', () => {
+                applyWorkspaceMode(WORKSPACE_MODE.SPLIT, { triggerRender: true });
+            });
+        }
+
+        if (viewModeEditorButton) {
+            viewModeEditorButton.addEventListener('click', () => {
+                if (workspaceMode === WORKSPACE_MODE.SPLIT) {
+                    lastSplitRatio = pendingSplitRatio;
+                }
+                applyWorkspaceMode(WORKSPACE_MODE.EDITOR_ONLY, { triggerRender: true });
+            });
+        }
+
+        if (viewModePreviewButton) {
+            viewModePreviewButton.addEventListener('click', () => {
+                if (workspaceMode === WORKSPACE_MODE.SPLIT) {
+                    lastSplitRatio = pendingSplitRatio;
+                }
+                applyWorkspaceMode(WORKSPACE_MODE.PREVIEW_ONLY, { triggerRender: true });
+            });
+        }
+
+        if (splitDivider) {
+            splitDivider.addEventListener('mousedown', (event) => {
+                if (!isDesktopLayout() || workspaceMode !== WORKSPACE_MODE.SPLIT) return;
+                event.preventDefault();
+                isDividerDragging = true;
+                editorPreviewContainer.classList.add('resizing');
+                pendingSplitRatio = lastSplitRatio;
+                window.addEventListener('mousemove', handleDividerMouseMove);
+                window.addEventListener('mouseup', handleDividerMouseUp);
+            });
+        }
+
+        window.addEventListener('resize', () => {
+            if (workspaceMode === WORKSPACE_MODE.SPLIT) {
+                applyWorkspaceMode(WORKSPACE_MODE.SPLIT);
+            }
+        });
+
+        // 初始化工作区模式（默认 split，刷新回默认比例）
+        applyWorkspaceMode(WORKSPACE_MODE.SPLIT);
 
         // ===== 保留原 Mermaid.js 配置（用于 Gantt, Pie 等图表） =====
         mermaid.initialize({
@@ -594,8 +818,8 @@
             themeManager.saveTheme(theme);
             schedulePreviewUpdate();
 
-            statusDiv.textContent = '主题已应用';
-            setTimeout(() => statusDiv.textContent = '', 2000);
+            setStatusText('主题已应用');
+            showToast('主题已应用', 'success');
         });
 
         // 保存自定义主题按钮
@@ -637,8 +861,8 @@
             customThemeModal.style.display = 'none';
             schedulePreviewUpdate();
 
-            statusDiv.textContent = `自定义主题 "${name}" 已保存`;
-            setTimeout(() => statusDiv.textContent = '', 2000);
+            setStatusText(`自定义主题 "${name}" 已保存`);
+            showToast(`自定义主题 "${name}" 已保存`, 'success');
         });
 
         // 导出主题按钮
@@ -678,8 +902,8 @@
             a.click();
             URL.revokeObjectURL(url);
 
-            statusDiv.textContent = '主题已导出';
-            setTimeout(() => statusDiv.textContent = '', 2000);
+            setStatusText('主题已导出');
+            showToast('主题已导出', 'success');
         });
 
         // 导入主题按钮
@@ -730,8 +954,8 @@
                         document.getElementById('themeBorderColor').value = importedTheme.colors.border;
                     }
 
-                    statusDiv.textContent = '主题已导入';
-                    setTimeout(() => statusDiv.textContent = '', 2000);
+                    setStatusText('主题已导入');
+                    showToast('主题已导入', 'success');
                 } catch (error) {
                     alert('导入失败: ' + error.message);
                 }
@@ -743,15 +967,17 @@
         });
 
         async function loadDefaultMd() {
-            statusDiv.textContent = t('loadingDefault');
+            setStatusText(t('loadingDefault'));
             try {
                 const response = await fetch('default.md');
                 if (!response.ok) throw new Error(`${t('defaultLoadError')}${response.statusText} (Status: ${response.status}). Ensure page is served via HTTP/S.`);
                 combinedContentInput.value = await response.text();
-                statusDiv.textContent = t('defaultLoaded');
+                setStatusText(t('defaultLoaded'));
+                showToast(t('defaultLoaded'), 'info', { duration: 1200 });
             } catch (error) {
                 console.error("Error loading default.md:", error);
-                statusDiv.textContent = `${t('defaultLoadError')}${error.message}. ${t('defaultLoadInfo')}`;
+                setStatusText(`${t('defaultLoadError')}${error.message}. ${t('defaultLoadInfo')}`);
+                showToast(`${t('defaultLoadError')}${error.message}`, 'error', { persistent: true });
             }
             schedulePreviewUpdate();
         }
@@ -875,7 +1101,7 @@
             const editorClientHeight = combinedContentInput.clientHeight;
             const editorScrollPercentage = editorScrollTop / (editorScrollHeight - editorClientHeight);
 
-            statusDiv.textContent = t('loadingDefault');
+            setStatusText(t('loadingDefault'));
             documentPreviewDiv.innerHTML = '';
             let selectedFontFamily = fontPicker.value;
             if (selectedFontFamily === 'Aptos') selectedFontFamily = 'Aptos, Calibri, sans-serif';
@@ -979,7 +1205,7 @@
                 }
             }
             if (!documentStructure.length && rawContent.trim() === "") documentPreviewDiv.innerHTML = `<p><i>${t('previewPlaceholder')}</i></p>`;
-            statusDiv.textContent = '';
+            setStatusText('');
 
             // 延迟恢复同步滚动，等待 DOM 更新完成
             setTimeout(() => {
@@ -1005,7 +1231,6 @@
         combinedContentInput.addEventListener('input', schedulePreviewUpdate);
         fontPicker.addEventListener('change', schedulePreviewUpdate);
         document.addEventListener('DOMContentLoaded', loadDefaultMd);
-        printPreviewButton.addEventListener('click', () => window.print());
 
         // ===== 数学公式渲染函数 =====
         /**
@@ -1178,7 +1403,12 @@
                     img.onerror = () => reject(new Error("Failed to load SVG Data URL into image."));
                     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(cleanedSvgString)));
                 });
-            } catch (e) { console.error(`Error in renderMermaidToPng for ${diagramId}:`, e); statusDiv.textContent = `Error PNG ${diagramId}: ${e.message}`; return null; }
+            } catch (e) {
+                console.error(`Error in renderMermaidToPng for ${diagramId}:`, e);
+                setStatusText(`Error PNG ${diagramId}: ${e.message}`);
+                showToast(`Mermaid 转 PNG 失败: ${diagramId}`, 'error', { persistent: true });
+                return null;
+            }
         }
 
         function processInlineFormatting(parentNode, docxGlobal, options = {}) {
@@ -1416,10 +1646,18 @@
 
         generateDocxButton.addEventListener('click', async () => {
             generateDocxButton.disabled = true;
-            statusDiv.textContent = t('generating');
+            setStatusText(t('generating'));
+            setToolbarProgress(true);
+            showToast(t('generating'), 'info', { duration: 1200 });
             const selectedFont = fontPicker.value;
             const docxGlobal = window.docx;
-            if (!docxGlobal) { statusDiv.textContent = t('error') + 'DOCX library not loaded.'; generateDocxButton.disabled = false; return; }
+            if (!docxGlobal) {
+                setStatusText(t('error') + 'DOCX library not loaded.');
+                showToast(t('error') + 'DOCX library not loaded.', 'error', { persistent: true });
+                setToolbarProgress(false);
+                generateDocxButton.disabled = false;
+                return;
+            }
 
             try {
                 // DOCX 图片尺寸约束：基于 A4 纸张（8.27英寸宽）减去左右边距（各1英寸）
@@ -1436,7 +1674,7 @@
                         finalDocChildren.push(...markdownElements);
                     } else if (segment.type === 'math' && segment.id) {
                         // 处理数学公式导出
-                        statusDiv.textContent = `${t('generating')} Math ${segment.id}...`;
+                        setStatusText(`${t('generating')} Math ${segment.id}...`);
                         const pngBlob = await renderMathToPng(segment.content, segment.id, segment.isBlock);
                         if (pngBlob) {
                             const imageBuffer = await pngBlob.arrayBuffer();
@@ -1480,7 +1718,7 @@
                             }));
                         }
                     } else if (segment.type === 'mermaid' && segment.id) {
-                        statusDiv.textContent = `${t('generating')} Mermaid ${segment.id}...`;
+                        setStatusText(`${t('generating')} Mermaid ${segment.id}...`);
                         const pngBlob = await renderMermaidToPng(segment.content, segment.id);
                         if (pngBlob) {
                             const imageBuffer = await pngBlob.arrayBuffer();
@@ -1555,12 +1793,20 @@
                 const fileName = extractFileName(rawContent);
                 saveAs(blob, `${fileName}_${window.location.host}.docx`);
 
-                statusDiv.textContent = t('success');
-            } catch (e) { console.error("Error DOCX gen:", e, e.stack); statusDiv.textContent = `${t('error')}${e.message}`; }
-            finally { generateDocxButton.disabled = false; }
+                setStatusText(t('success'));
+                showToast(t('success'), 'success');
+            } catch (e) {
+                console.error("Error DOCX gen:", e, e.stack);
+                setStatusText(`${t('error')}${e.message}`);
+                showToast(`${t('error')}${e.message}`, 'error', { persistent: true });
+            } finally {
+                setToolbarProgress(false);
+                generateDocxButton.disabled = false;
+            }
         });
 
         printPreviewButton.addEventListener('click', () => {
-            statusDiv.textContent = t('printPrompt');
+            setStatusText(t('printPrompt'));
+            showToast(t('printPrompt'), 'info', { duration: 1400 });
             window.print();
         });

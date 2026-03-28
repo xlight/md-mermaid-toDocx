@@ -93,8 +93,10 @@
                 <button id="mermaidConfigButton" data-i18n="mermaidConfigButton" title="Mermaid 配置">⚙️ 图表配置</button>
             </div>
 
-                <div class="toolbar-group toolbar-view-mode-placeholder">
-                    <button id="viewModePlaceholder" class="secondary-button" type="button" data-i18n="viewModePlaceholder" disabled>Split / Preview</button>
+                <div class="toolbar-group toolbar-view-mode-controls" role="group" aria-label="View mode">
+                    <button id="viewModeSplit" class="secondary-button view-mode-button" type="button" data-i18n="viewModeSplit">分栏</button>
+                    <button id="viewModeEditor" class="secondary-button view-mode-button" type="button" data-i18n="viewModeEditor">仅编辑</button>
+                    <button id="viewModePreview" class="secondary-button view-mode-button" type="button" data-i18n="viewModePreview">仅预览</button>
                 </div>
             </div>
 
@@ -112,15 +114,17 @@
                 </div>
             </div>
         </div>
-        <div class="status-bar">
-            <div id="status"></div>
-        </div>
+        <div id="toolbarProgress" class="toolbar-progress-line" aria-hidden="true"></div>
+        <div id="status" class="status-sr-only" aria-live="polite"></div>
+        <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
         <div class="editor-preview-container">
             <div class="editor-wrapper">
                 <div class="section-header" data-i18n="editorHeader">编辑器 (支持 Markdown 和 Mermaid)</div>
                 <textarea id="combinedContentInput" data-i18n-placeholder="editorPlaceholder" placeholder="在此输入 Markdown 和 Mermaid 内容..."></textarea>
             </div>
+
+            <div id="splitDivider" class="split-divider" aria-hidden="true"></div>
 
             <div class="preview-wrapper">
                 <div class="section-header" data-i18n="previewHeader">实时预览</div>
