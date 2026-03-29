@@ -58,7 +58,8 @@
                 mathJaxNotLoaded: 'MathJax 未加载，数学公式功能不可用',
                 viewModeSplit: '分栏',
                 viewModeEditor: '仅编辑',
-                viewModePreview: '仅预览'
+                viewModePreview: '仅预览',
+                more: '更多'
             },
             'en': {
                 title: 'Markdown & Mermaid to DOCX',
@@ -118,7 +119,8 @@
                 mathJaxNotLoaded: 'MathJax not loaded, math formula feature unavailable',
                 viewModeSplit: 'Split',
                 viewModeEditor: 'Editor',
-                viewModePreview: 'Preview'
+                viewModePreview: 'Preview',
+                more: 'More'
             }
         };
 
@@ -155,6 +157,10 @@
 
             // 更新语言选择器
             document.getElementById('langPicker').value = lang;
+            const langPickerMobileEl = document.getElementById('langPickerMobile');
+            if (langPickerMobileEl) {
+                langPickerMobileEl.value = lang;
+            }
         }
 
         // 获取翻译文本
@@ -171,6 +177,7 @@
         const documentPreviewDiv = document.getElementById('documentPreview');
         const fontPicker = document.getElementById('fontPicker');
         const langPicker = document.getElementById('langPicker');
+        const langPickerMobile = document.getElementById('langPickerMobile');
 
         // 主题和输出模式相关 DOM 元素
         const themePicker = document.getElementById('themePicker');
@@ -445,10 +452,20 @@
         // 初始化语言
         applyLanguage(currentLang);
 
-        // 语言切换事件
+        // 语言切换事件（同步桌面端和移动端选择器）
         langPicker.addEventListener('change', (e) => {
-            applyLanguage(e.target.value);
+            const newLang = e.target.value;
+            langPickerMobile.value = newLang;
+            applyLanguage(newLang);
         });
+
+        if (langPickerMobile) {
+            langPickerMobile.addEventListener('change', (e) => {
+                const newLang = e.target.value;
+                langPicker.value = newLang;
+                applyLanguage(newLang);
+            });
+        }
 
         // 工作区模式切换事件
         if (viewModeSplitButton) {
@@ -2524,3 +2541,21 @@
             showToast(t('printPrompt'), 'info', { duration: 1400 });
             window.print();
         });
+
+        // 移动端按钮处理
+        const printPreviewButtonMobile = document.getElementById('printPreviewButtonMobile');
+        const mermaidConfigButtonMobile = document.getElementById('mermaidConfigButtonMobile');
+
+        if (printPreviewButtonMobile) {
+            printPreviewButtonMobile.addEventListener('click', () => {
+                setStatusText(t('printPrompt'));
+                showToast(t('printPrompt'), 'info', { duration: 1400 });
+                window.print();
+            });
+        }
+
+        if (mermaidConfigButtonMobile) {
+            mermaidConfigButtonMobile.addEventListener('click', () => {
+                mermaidConfigModal.style.display = 'block';
+            });
+        }

@@ -42,8 +42,8 @@
     <div class="container">
         <div class="toolbar">
             <div class="toolbar-left">
-                <h1 data-i18n="title">Markdown & Mermaid to DOCX</h1>
-                <div class="toolbar-group toolbar-links">
+                <h1 class="toolbar-title desktop-only" data-i18n="title">Markdown & Mermaid to DOCX</h1>
+                <div class="toolbar-group toolbar-links desktop-only">
                     <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="github-link compact-link" title="View on GitHub" aria-label="View on GitHub">
                         <svg viewBox="0 0 16 16" aria-hidden="true">
                             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
@@ -59,39 +59,35 @@
 
             <div class="toolbar-center">
                 <div class="toolbar-group">
-                <label for="fontPicker" data-i18n="fontLabel">字体:</label>
-                <select id="fontPicker">
-                    <optgroup data-i18n="chineseFonts" label="中文字体">
-                        <option value="Microsoft YaHei" selected>微软雅黑 (Microsoft YaHei)</option>
-                        <option value="SimSun">宋体 (SimSun)</option>
-                        <option value="SimHei">黑体 (SimHei)</option>
-                        <option value="KaiTi">楷体 (KaiTi)</option>
-                        <option value="FangSong">仿宋 (FangSong)</option>
-                        <option value="STSong">华文宋体 (STSong)</option>
-                        <option value="STHeiti">华文黑体 (STHeiti)</option>
-                        <option value="STKaiti">华文楷体 (STKaiti)</option>
-                        <option value="STFangsong">华文仿宋 (STFangsong)</option>
-                        <option value="NSimSun">新宋体 (NSimSun)</option>
-                        <option value="PingFang SC">苹方 (PingFang SC)</option>
-                        <option value="Heiti SC">黑体-简 (Heiti SC)</option>
-                        <option value="STXihei">华文细黑 (STXihei)</option>
-                    </optgroup>
-                    <optgroup data-i18n="englishFonts" label="英文字体">
-                        <option value="Calibri">Calibri</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Courier New">Courier New</option>
-                        <option value="Verdana">Verdana</option>
-                        <option value="Tahoma">Tahoma</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Aptos">Aptos</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <div class="toolbar-group">
-                <button id="mermaidConfigButton" data-i18n="mermaidConfigButton" title="Mermaid 配置">⚙️ 图表配置</button>
-            </div>
+                    <label for="fontPicker" data-i18n="fontLabel">字体:</label>
+                    <select id="fontPicker">
+                        <optgroup data-i18n="chineseFonts" label="中文字体">
+                            <option value="Microsoft YaHei" selected>微软雅黑 (Microsoft YaHei)</option>
+                            <option value="SimSun">宋体 (SimSun)</option>
+                            <option value="SimHei">黑体 (SimHei)</option>
+                            <option value="KaiTi">楷体 (KaiTi)</option>
+                            <option value="FangSong">仿宋 (FangSong)</option>
+                            <option value="STSong">华文宋体 (STSong)</option>
+                            <option value="STHeiti">华文黑体 (STHeiti)</option>
+                            <option value="STKaiti">华文楷体 (STKaiti)</option>
+                            <option value="STFangsong">华文仿宋 (STFangsong)</option>
+                            <option value="NSimSun">新宋体 (NSimSun)</option>
+                            <option value="PingFang SC">苹方 (PingFang SC)</option>
+                            <option value="Heiti SC">黑体-简 (Heiti SC)</option>
+                            <option value="STXihei">华文细黑 (STXihei)</option>
+                        </optgroup>
+                        <optgroup data-i18n="englishFonts" label="英文字体">
+                            <option value="Calibri">Calibri</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Aptos">Aptos</option>
+                        </optgroup>
+                    </select>
+                </div>
 
                 <div class="toolbar-group toolbar-view-mode-controls" role="group" aria-label="View mode">
                     <button id="viewModeSplit" class="secondary-button view-mode-button" type="button" data-i18n="viewModeSplit">分栏</button>
@@ -101,17 +97,66 @@
             </div>
 
             <div class="toolbar-right">
+                <div class="toolbar-group toolbar-actions desktop-only">
+                    <button id="printPreviewButton" class="secondary-button" data-i18n="printButton">🖨️ 打印预览</button>
+                </div>
+                <div class="toolbar-group desktop-only">
+                    <button id="mermaidConfigButton" data-i18n="mermaidConfigButton">图表配置</button>
+                </div>
                 <div class="toolbar-group toolbar-actions">
-                    <button id="printPreviewButton" class="secondary-button" data-i18n="printButton">打印预览</button>
                     <button id="generateDocxButton" class="primary-button" data-i18n="generateButton">生成 DOCX</button>
                 </div>
 
-                <div class="toolbar-group toolbar-lang-group">
+                <div class="toolbar-group toolbar-lang-group desktop-only">
                     <select id="langPicker" aria-label="Language">
                         <option value="zh-CN">简体中文</option>
                         <option value="en">English</option>
                     </select>
                 </div>
+
+                <details class="toolbar-more-menu">
+                    <summary class="toolbar-more-trigger" aria-label="更多选项">
+                        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M8 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM1.5 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm13 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path>
+                        </svg>
+                        <span class="toolbar-more-text" data-i18n="more">更多</span>
+                    </summary>
+                    <div class="toolbar-more-dropdown">
+                        <div class="toolbar-group toolbar-actions-mobile">
+                            <button id="printPreviewButtonMobile" class="secondary-button" data-i18n="printButton">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                打印预览
+                            </button>
+                            <button id="mermaidConfigButtonMobile" data-i18n="mermaidConfigButton">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                图表配置
+                            </button>
+                        </div>
+                        <div class="toolbar-group toolbar-links-mobile">
+                            <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="github-link" title="GitHub">
+                                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                                </svg>
+                                <span>GitHub</span>
+                            </a>
+                            <a href="https://github.com/xlight/md-mermaid-toDocx" target="_blank" class="star-button" title="Star">
+                                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                                    <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path>
+                                </svg>
+                                <span>Star</span>
+                            </a>
+                        </div>
+                        <div class="toolbar-group toolbar-lang-group-mobile">
+                            <label class="dropdown-label" style="display:flex;align-items:center;gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                <select id="langPickerMobile" aria-label="Language">
+                                    <option value="zh-CN">简体中文</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </details>
             </div>
         </div>
         <div id="toolbarProgress" class="toolbar-progress-line" aria-hidden="true"></div>
