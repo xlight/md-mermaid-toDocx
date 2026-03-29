@@ -206,6 +206,78 @@
         let debounceTimerPreview;
         let isSyncingScroll = false; // 防止循环触发
         let isUpdatingPreview = false; // 防止预览更新时触发同步滚动
+        let syncDirectionLock = null;
+        let syncDirectionLockUntil = 0;
+        let syncReleaseTimer = null;
+        let scrollSyncIndex = {
+            anchors: [],
+            editorRawContent: '',
+            structure: [],
+            previewTextIndex: []
+        };
+
+        const syncConfig = {
+            deadbandPx: 5,
+            lockMs: 150,
+            textWeight: 0.15,          // 文本微调权重（仅在锚点稀疏区域生效）
+            textWindowPx: 520,
+            textConfidenceThreshold: 0.7,
+            maxTextAdjustPx: 80,
+            anchorDenseThresholdPx: 200 // 锚点间距小于此值视为"密集"，跳过文本微调
+        };
+
+        window.__scrollSyncDebug = {
+            enabled: false,
+            setEnabled(value) {
+                this.enabled = !!value;
+                console.log(`[scroll-sync] debug ${value ? 'ON' : 'OFF'} — 滚动时会输出锚点命中日志`);
+            },
+            getSnapshot() {
+                return {
+                    anchorCount: scrollSyncIndex.anchors.length,
+                    anchors: scrollSyncIndex.anchors.map(a => ({
+                        id: a.segmentId,
+                        editor: Math.round(a.editorPos),
+                        preview: Math.round(a.previewPos)
+                    })),
+                    config: { ...syncConfig },
+                    lock: {
+                        direction: syncDirectionLock,
+                        until: syncDirectionLockUntil
+                    }
+                };
+            },
+            // 实时监听：每帧打印当前锚点位置，调用 watch() 开始，再调用一次停止
+            _watchTimer: null,
+            watch() {
+                if (this._watchTimer) {
+                    clearInterval(this._watchTimer);
+                    this._watchTimer = null;
+                    console.log('[scroll-sync] watch 已停止');
+                    return;
+                }
+                console.log('[scroll-sync] watch 已启动，再次调用 __scrollSyncDebug.watch() 停止');
+                this._watchTimer = setInterval(() => {
+                    const eTop = combinedContentInput.scrollTop;
+                    const pTop = documentPreviewDiv.scrollTop;
+                    const anchors = scrollSyncIndex.anchors;
+                    // 找当前编辑器位置所在锚点段
+                    let seg = '(无锚点)';
+                    for (let i = 0; i < anchors.length - 1; i++) {
+                        if (eTop >= anchors[i].editorPos && eTop <= anchors[i + 1].editorPos) {
+                            seg = `[${anchors[i].segmentId}] → [${anchors[i + 1].segmentId}]`;
+                            break;
+                        }
+                    }
+                    console.log(`[scroll-sync] editor=${Math.round(eTop)} preview=${Math.round(pTop)} | 锚点段: ${seg} | 锚点总数: ${anchors.length}`);
+                }, 500);
+            }
+        };
+
+        function debugSyncLog(message, payload) {
+            if (!window.__scrollSyncDebug || !window.__scrollSyncDebug.enabled) return;
+            console.log(`[scroll-sync] ${message}`, payload || '');
+        }
 
         // ===== 工作区模式状态（会话内） =====
         const WORKSPACE_MODE = {
@@ -1026,13 +1098,30 @@
             // Split by code blocks (mermaid) and block math formulas ($$...$$)
             const parts = rawText.split(/(\n?```(?:mermaid)\n[\s\S]*?\n```\n?|\$\$[\s\S]*?\$\$)/g);
             let counter = 0;
+            let searchCursor = 0;
+
+            const locatePart = (part) => {
+                const start = rawText.indexOf(part, searchCursor);
+                const safeStart = start >= 0 ? start : searchCursor;
+                const end = safeStart + part.length;
+                searchCursor = end;
+                return { start: safeStart, end };
+            };
+
             for (const part of parts) {
                 if (!part || part.trim() === "") continue;
+                const partRange = locatePart(part);
                 
                 // Match Mermaid code blocks
                 const mermaidMatch = part.match(/^\n?```mermaid\n([\s\S]*?)\n```\n?$/);
                 if (mermaidMatch) {
-                    structure.push({ type: 'mermaid', content: mermaidMatch[1].trim(), id: `mermaid-${counter++}` });
+                    structure.push({
+                        type: 'mermaid',
+                        content: mermaidMatch[1].trim(),
+                        id: `mermaid-${counter++}`,
+                        sourceStart: partRange.start,
+                        sourceEnd: partRange.end
+                    });
                     continue;
                 }
                 
@@ -1043,47 +1132,657 @@
                         type: 'math', 
                         content: blockMathMatch[1].trim(), 
                         id: `math-${counter++}`,
-                        isBlock: true 
+                        isBlock: true,
+                        sourceStart: partRange.start,
+                        sourceEnd: partRange.end
                     });
                     continue;
                 }
                 
                 // Regular markdown content
                 if (part.trim()) {
-                    structure.push({ type: 'markdown', content: part });
+                    structure.push({
+                        type: 'markdown',
+                        content: part,
+                        id: `md-${counter++}`,
+                        sourceStart: partRange.start,
+                        sourceEnd: partRange.end
+                    });
                 }
             }
             return structure;
         }
 
-        // 同步滚动函数
-        function syncScroll(source, target) {
-            // 如果正在同步滚动或正在更新预览，则不执行
-            if (isSyncingScroll || isUpdatingPreview) return;
-            isSyncingScroll = true;
+        function getScrollableDistance(element) {
+            return Math.max(1, element.scrollHeight - element.clientHeight);
+        }
 
-            const sourceScrollPercentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
-            const targetScrollTop = sourceScrollPercentage * (target.scrollHeight - target.clientHeight);
-            target.scrollTop = targetScrollTop;
+        function getScrollPercent(element) {
+            return clamp(element.scrollTop / getScrollableDistance(element), 0, 1);
+        }
 
-            setTimeout(() => {
+        function mapByPercentage(sourceElement, targetElement, sourceTop) {
+            const sourceDistance = getScrollableDistance(sourceElement);
+            const targetDistance = getScrollableDistance(targetElement);
+            return clamp((sourceTop / sourceDistance) * targetDistance, 0, targetDistance);
+        }
+
+        function normalizeSyncText(text) {
+            return (text || '')
+                .replace(/\s+/g, ' ')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .trim()
+                .toLowerCase();
+        }
+
+        function rebuildPreviewTextIndex() {
+            const blocks = Array.from(documentPreviewDiv.querySelectorAll('.markdown-preview-segment, .math-display-segment, .mermaid-preview-segment'));
+            scrollSyncIndex.previewTextIndex = blocks.map(node => ({
+                top: node.offsetTop,
+                text: normalizeSyncText(node.textContent).slice(0, 200),
+                node
+            })).filter(item => item.text);
+        }
+
+        // 从预览块级元素中提取用于匹配的搜索针（多个候选，按优先级）
+        // Returns array of needles to search for in source text, ordered by specificity
+        function extractSearchNeedles(element) {
+            const tag = element.tagName.toLowerCase();
+            const needles = [];
+
+            // 标题：在源文本中有 # 前缀，直接搜索文本内容
+            // e.g. "## 功能特性" → search for "功能特性" (会命中 "## 功能特性")
+            if (/^h[1-6]$/.test(tag)) {
+                const text = element.textContent.trim();
+                if (text) needles.push(text);
+                return needles;
+            }
+
+            // 代码块：search for the opening ```language line
+            if (tag === 'pre') {
+                const code = element.querySelector('code');
+                if (code) {
+                    // 检测语言类（如 class="language-javascript"）
+                    const langClass = Array.from(code.classList || []).find(c => c.startsWith('language-'));
+                    if (langClass) {
+                        const lang = langClass.replace('language-', '');
+                        needles.push('```' + lang);
+                    }
+                    // 也用代码第一行作为备选
+                    const firstLine = code.textContent.trim().split('\n')[0];
+                    if (firstLine) needles.push(firstLine);
+                }
+                return needles;
+            }
+
+            // 表格：搜索表头内容（markdown 中 | 分隔）
+            if (tag === 'table') {
+                const ths = element.querySelectorAll('th');
+                if (ths.length > 0) {
+                    // 第一个表头单元格通常足够定位
+                    const firstTh = ths[0].textContent.trim();
+                    if (firstTh) needles.push(firstTh);
+                    // 完整表头行（用 | 连接，与 markdown 源文本匹配）
+                    const headerRow = Array.from(ths).map(th => th.textContent.trim()).join(' | ');
+                    if (headerRow) needles.push(headerRow);
+                }
+                return needles;
+            }
+
+            // 列表：搜索第一项的文本（markdown 中有 - 或 1. 前缀）
+            if (tag === 'ul' || tag === 'ol') {
+                const firstLi = element.querySelector('li');
+                if (firstLi) {
+                    // 提取第一项的纯文本（去掉 checkbox 等）
+                    let liText = firstLi.textContent.trim().slice(0, 60);
+                    // 去掉 markdown 格式字符（**、*、`）后搜索
+                    const cleanText = liText.replace(/[*`~]/g, '').trim().slice(0, 40);
+                    if (cleanText.length >= 4) needles.push(cleanText);
+                    if (liText.length >= 3) needles.push(liText.slice(0, 40));
+                }
+                return needles;
+            }
+
+            // blockquote：搜索引用文本（源文本中有 > 前缀）
+            if (tag === 'blockquote') {
+                const text = element.textContent.trim().slice(0, 60);
+                if (text) needles.push(text);
+                return needles;
+            }
+
+            // 分割线
+            if (tag === 'hr') {
+                needles.push('---');
+                return needles;
+            }
+
+            // 段落：提取纯文本内容，去掉内联格式后搜索
+            // e.g. "这是 **粗体文本**" → "这是" 或 "粗体文本"
+            const text = element.textContent.trim();
+            if (text) {
+                // 取前50个字符，去掉可能的 markdown 格式符号
+                const clean = text.replace(/[*`~\[\]()]/g, '').trim().slice(0, 50);
+                if (clean.length >= 4) needles.push(clean);
+                // 也用原始文本前30字符
+                needles.push(text.slice(0, 30));
+            }
+            return needles;
+        }
+
+        // 在源文本中用多个候选针按顺序搜索，返回最先命中的字符偏移
+        // Search source text with multiple needles, return first match offset
+        function findInSource(needles, sourceText, searchFrom) {
+            if (!needles || needles.length === 0) return -1;
+
+            const searchArea = sourceText.slice(searchFrom);
+            for (const needle of needles) {
+                if (!needle || needle.length < 2) continue;
+
+                // 直接搜索
+                const idx = searchArea.indexOf(needle);
+                if (idx >= 0) {
+                    return searchFrom + idx;
+                }
+            }
+
+            // 所有精确匹配都失败，尝试用第一个 needle 做模糊搜索（忽略多余空格）
+            const primary = (needles[0] || '').slice(0, 20).trim();
+            if (primary.length >= 3) {
+                try {
+                    const escaped = primary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const fuzzy = escaped.replace(/\s+/g, '\\s+');
+                    const regex = new RegExp(fuzzy);
+                    const match = regex.exec(searchArea);
+                    if (match) {
+                        return searchFrom + match.index;
+                    }
+                } catch (e) {
+                    // regex 构造失败，忽略
+                }
+            }
+
+            // 去 markdown 格式后匹配：构建 [cleanChar → origIndex] 映射表
+            // Strip markdown formatting then match, mapping back to original offset
+            if (needles[0] && needles[0].length >= 4) {
+                const stripMap = []; // stripMap[cleanIdx] = origIdx (在 searchArea 中的偏移)
+                let cleanChars = [];
+                for (let i = 0; i < searchArea.length; i++) {
+                    const ch = searchArea[i];
+                    // 跳过 markdown 内联格式字符：* ` ~ [ ] ( )
+                    if ('*`~[]()'.includes(ch)) continue;
+                    stripMap.push(i);
+                    cleanChars.push(ch);
+                }
+                const cleanArea = cleanChars.join('');
+                // 对 needle 也做同样的清理
+                const cleanNeedle = needles[0].replace(/[*`~\[\]()]/g, '');
+                if (cleanNeedle.length >= 4) {
+                    const cidx = cleanArea.indexOf(cleanNeedle);
+                    if (cidx >= 0) {
+                        return searchFrom + stripMap[cidx];
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        // 为 markdown segment 内部的块级元素生成细粒度锚点
+        // Generate fine-grained anchors for block elements inside a markdown segment
+        function buildIntraSegmentAnchors(segment, previewNode, sourceLength, charOffsetToEditorPos) {
+            const anchors = [];
+            const topLevelBlocks = [];
+
+            // 收集 previewNode 的直接子元素中的块级元素
+            for (const child of previewNode.children) {
+                const tag = child.tagName.toLowerCase();
+                if (/^h[1-6]$/.test(tag) || tag === 'p' || tag === 'pre' || 
+                    tag === 'table' || tag === 'ul' || tag === 'ol' || 
+                    tag === 'blockquote' || tag === 'hr') {
+                    topLevelBlocks.push(child);
+                }
+            }
+
+            if (topLevelBlocks.length === 0) return anchors;
+
+            const segStart = segment.sourceStart || 0;
+            const segEnd = segment.sourceEnd || sourceLength;
+            const segSource = segment.content || '';
+            let searchCursor = 0;
+            let matchedCount = 0;
+            let failedCount = 0;
+
+            // 第一遍：用文本匹配计算每个 block 的 charOffset，未匹配的标记为 -1
+            const charOffsets = topLevelBlocks.map((block, idx) => {
+                const needles = extractSearchNeedles(block);
+                if (needles.length === 0) return -1;
+
+                const localOffset = findInSource(needles, segSource, searchCursor);
+                if (localOffset >= 0) {
+                    searchCursor = localOffset + 1;
+                    matchedCount++;
+                    return segStart + localOffset;
+                }
+                failedCount++;
+                return -1;
+            });
+
+            // 第二遍：修复乱序——确保 charOffset 序列单调递增
+            // 如果某个匹配结果比前一个已确认的位置还小，丢弃它（标记为 -1）
+            let lastConfirmed = -1;
+            for (let i = 0; i < charOffsets.length; i++) {
+                if (charOffsets[i] >= 0) {
+                    if (charOffsets[i] <= lastConfirmed) {
+                        charOffsets[i] = -1; // 乱序，丢弃
+                    } else {
+                        lastConfirmed = charOffsets[i];
+                    }
+                }
+            }
+
+            // 第三遍：对未匹配的 block（-1），用相邻已匹配 block 做线性插值
+            for (let i = 0; i < charOffsets.length; i++) {
+                if (charOffsets[i] >= 0) continue;
+
+                // 找前一个已匹配的
+                let prevIdx = -1, prevOffset = segStart;
+                for (let j = i - 1; j >= 0; j--) {
+                    if (charOffsets[j] >= 0) { prevIdx = j; prevOffset = charOffsets[j]; break; }
+                }
+                // 找后一个已匹配的
+                let nextIdx = charOffsets.length, nextOffset = segEnd;
+                for (let j = i + 1; j < charOffsets.length; j++) {
+                    if (charOffsets[j] >= 0) { nextIdx = j; nextOffset = charOffsets[j]; break; }
+                }
+                // 在 [prevOffset, nextOffset] 之间按位置比例插值
+                const span = nextIdx - prevIdx;
+                const pos = i - prevIdx;
+                charOffsets[i] = prevOffset + (nextOffset - prevOffset) * (pos / span);
+            }
+
+            // 生成锚点
+            topLevelBlocks.forEach((block, idx) => {
+                const editorPos = charOffsetToEditorPos(charOffsets[idx]);
+
+                let previewTop = block.offsetTop;
+                let parent = block.offsetParent;
+                while (parent && parent !== documentPreviewDiv && parent !== document.body) {
+                    previewTop += parent.offsetTop;
+                    parent = parent.offsetParent;
+                }
+
+                anchors.push({
+                    editorPos,
+                    previewPos: previewTop,
+                    segmentId: `${segment.id}-block-${idx}`
+                });
+            });
+
+            debugSyncLog('intra-segment anchors', {
+                segmentId: segment.id,
+                total: topLevelBlocks.length,
+                matched: matchedCount,
+                failed: failedCount,
+                anchors: anchors.slice(-3).map(a => ({ 
+                    id: a.segmentId, 
+                    editor: Math.round(a.editorPos), 
+                    preview: Math.round(a.previewPos) 
+                }))
+            });
+
+            return anchors;
+        }
+
+        function rebuildScrollSyncIndex(rawContent, structure) {
+            const sourceLength = Math.max(1, rawContent.length);
+            const editorDistance = getScrollableDistance(combinedContentInput);
+            const previewDistance = getScrollableDistance(documentPreviewDiv);
+
+            // 预算行号映射表：charOffset → lineNumber
+            const lineBreaks = [0]; // 每行的起始字符偏移
+            for (let i = 0; i < rawContent.length; i++) {
+                if (rawContent[i] === '\n') lineBreaks.push(i + 1);
+            }
+            const totalLines = lineBreaks.length;
+
+            // 编辑器行高和内边距（用于精确像素定位）
+            const editorStyle = window.getComputedStyle(combinedContentInput);
+            const editorLineHeight = parseFloat(editorStyle.lineHeight) || 24;
+            const editorPaddingTop = parseFloat(editorStyle.paddingTop) || 0;
+
+            // 字符偏移 → 编辑器像素位置（基于行号 × 行高 + paddingTop）
+            // textarea 的 scrollTop 直接对应内容区的像素偏移，
+            // 第 n 行的顶部位置 = paddingTop + n * lineHeight
+            function charOffsetToEditorPos(charOffset) {
+                // 二分查找所在行
+                let lo = 0, hi = lineBreaks.length - 1;
+                while (lo < hi) {
+                    const mid = (lo + hi + 1) >> 1;
+                    if (lineBreaks[mid] <= charOffset) lo = mid; else hi = mid - 1;
+                }
+                const pixelPos = editorPaddingTop + lo * editorLineHeight;
+                return clamp(pixelPos, 0, editorDistance);
+            }
+
+            debugSyncLog('rebuild start', {
+                sourceLength,
+                totalLines,
+                editorDistance,
+                previewDistance,
+                editorLineHeight,
+                editorPaddingTop,
+                contentHeight: editorPaddingTop + totalLines * editorLineHeight,
+                segmentCount: structure.length
+            });
+
+            // Build raw anchor pairs: editorPos <-> previewPos
+            const rawAnchors = [{ editorPos: 0, previewPos: 0, segmentId: 'start' }];
+
+            structure.forEach(segment => {
+                if (!segment.id) return;
+                const previewNode = document.getElementById(`preview-${segment.id}`) || documentPreviewDiv.querySelector(`[data-segment-id="${segment.id}"]`);
+                if (!previewNode) return;
+
+                const sourceStart = clamp(segment.sourceStart || 0, 0, sourceLength);
+                const sourceEnd = clamp(segment.sourceEnd || sourceLength, 0, sourceLength);
+                const editorPosStart = charOffsetToEditorPos(sourceStart);
+                const previewPosStart = previewNode.offsetTop;
+
+                // segment 起始锚点
+                rawAnchors.push({ editorPos: editorPosStart, previewPos: previewPosStart, segmentId: segment.id });
+
+                // segment 结束锚点（用段底部位置，确保 mermaid/math 等非文本段的区间精确）
+                // 对于 mermaid/math 段尤其重要：源码只有几行但预览可能很高
+                const editorPosEnd = charOffsetToEditorPos(sourceEnd);
+                const previewPosEnd = previewPosStart + previewNode.offsetHeight;
+                rawAnchors.push({ editorPos: editorPosEnd, previewPos: previewPosEnd, segmentId: `${segment.id}-end` });
+
+                // 对 markdown segment，深入提取块级元素的细粒度锚点
+                // For markdown segments, extract fine-grained anchors from block-level elements
+                if (segment.type === 'markdown') {
+                    const intraAnchors = buildIntraSegmentAnchors(segment, previewNode, sourceLength, charOffsetToEditorPos);
+                    rawAnchors.push(...intraAnchors);
+                }
+            });
+
+            rawAnchors.push({
+                editorPos: editorDistance,
+                previewPos: previewDistance,
+                segmentId: 'end'
+            });
+
+            // Sort by editorPos, then normalize to ensure both axes are monotonically non-decreasing
+            rawAnchors.sort((a, b) => a.editorPos - b.editorPos || a.previewPos - b.previewPos);
+
+            const normalizedAnchors = [];
+            let lastEditor = -1;
+            let lastPreview = -1;
+            rawAnchors.forEach(anchor => {
+                const safeEditor = Math.max(anchor.editorPos, lastEditor);
+                const safePreview = Math.max(anchor.previewPos, lastPreview);
+                if (normalizedAnchors.length > 0 && safeEditor === lastEditor && safePreview === lastPreview) return;
+                normalizedAnchors.push({ editorPos: safeEditor, previewPos: safePreview, segmentId: anchor.segmentId });
+                lastEditor = safeEditor;
+                lastPreview = safePreview;
+            });
+
+            scrollSyncIndex.anchors = normalizedAnchors;
+            scrollSyncIndex.editorRawContent = rawContent;
+            scrollSyncIndex.structure = structure;
+            rebuildPreviewTextIndex();
+            debugSyncLog('index rebuilt', { anchors: normalizedAnchors.length });
+        }
+
+        // Piecewise linear interpolation through anchors.
+        // direction: 'editor-to-preview' or 'preview-to-editor'
+        function mapByAnchors(scrollPos, direction) {
+            const anchors = scrollSyncIndex.anchors;
+            if (!anchors || anchors.length < 2) return null;
+
+            // Pick the correct axis based on direction
+            const fromKey = direction === 'editor-to-preview' ? 'editorPos' : 'previewPos';
+            const toKey = direction === 'editor-to-preview' ? 'previewPos' : 'editorPos';
+
+            // Clamp to bounds
+            if (scrollPos <= anchors[0][fromKey]) return anchors[0][toKey];
+            if (scrollPos >= anchors[anchors.length - 1][fromKey]) return anchors[anchors.length - 1][toKey];
+
+            // 二分查找：找到 scrollPos 所在的锚点区间 [anchors[lo], anchors[lo+1]]
+            let lo = 0, hi = anchors.length - 2;
+            while (lo < hi) {
+                const mid = (lo + hi + 1) >> 1;
+                if (anchors[mid][fromKey] <= scrollPos) lo = mid; else hi = mid - 1;
+            }
+
+            const a = anchors[lo];
+            const b = anchors[lo + 1];
+            const span = Math.max(1, b[fromKey] - a[fromKey]);
+            const progress = (scrollPos - a[fromKey]) / span;
+            return a[toKey] + (b[toKey] - a[toKey]) * progress;
+        }
+
+        function getEditorTopFingerprint() {
+            const text = combinedContentInput.value || '';
+            const editorStyle = window.getComputedStyle(combinedContentInput);
+            const lineHeight = parseFloat(editorStyle.lineHeight) || 24;
+            const paddingTop = parseFloat(editorStyle.paddingTop) || 0;
+            // scrollTop 包含 paddingTop 区域，减去 padding 后再算行号
+            const topLine = Math.max(0, Math.floor((combinedContentInput.scrollTop - paddingTop) / lineHeight));
+            const lines = text.split('\n');
+            const sample = lines.slice(topLine, topLine + 4).map(normalizeSyncText).filter(Boolean);
+            if (!sample.length) return null;
+            return {
+                text: sample.join(' '),
+                topLine,
+                lineHeight
+            };
+        }
+
+        function getPreviewTopFingerprint() {
+            const viewportTop = documentPreviewDiv.scrollTop;
+            const blocks = Array.from(documentPreviewDiv.querySelectorAll('.markdown-preview-segment, .math-display-segment, .mermaid-preview-segment'));
+            const visible = blocks.find(node => node.offsetTop + node.offsetHeight >= viewportTop + 12);
+            if (!visible) return null;
+            const normalized = normalizeSyncText(visible.textContent);
+            if (!normalized) return null;
+            return {
+                text: normalized.slice(0, 220),
+                top: visible.offsetTop
+            };
+        }
+
+        function matchPreviewByText(baseTop, fingerprint) {
+            if (!fingerprint || !fingerprint.text) return null;
+            const candidates = scrollSyncIndex.previewTextIndex.filter(item => Math.abs(item.top - baseTop) <= syncConfig.textWindowPx);
+            if (!candidates.length) return null;
+
+            const hits = candidates.map(item => {
+                const contains = item.text.includes(fingerprint.text) || fingerprint.text.includes(item.text);
+                if (!contains) return null;
+                const lengthRatio = Math.min(item.text.length, fingerprint.text.length) / Math.max(item.text.length, fingerprint.text.length);
+                const distanceScore = 1 - clamp(Math.abs(item.top - baseTop) / syncConfig.textWindowPx, 0, 1);
+                return {
+                    top: item.top,
+                    confidence: 0.65 * lengthRatio + 0.35 * distanceScore
+                };
+            }).filter(Boolean).sort((x, y) => y.confidence - x.confidence);
+
+            if (!hits.length) return null;
+            if (hits.length > 1 && Math.abs(hits[0].confidence - hits[1].confidence) < 0.06) return null;
+            return hits[0];
+        }
+
+        function matchEditorByText(baseTop, fingerprint) {
+            if (!fingerprint || !fingerprint.text) return null;
+            const text = combinedContentInput.value || '';
+            const lines = text.split('\n');
+            const editorStyle = window.getComputedStyle(combinedContentInput);
+            const lineHeight = parseFloat(editorStyle.lineHeight) || 24;
+            const paddingTop = parseFloat(editorStyle.paddingTop) || 0;
+            // baseTop 包含 paddingTop，需要减去 padding 再转行号
+            const baseLine = Math.max(0, Math.floor((baseTop - paddingTop) / lineHeight));
+            const searchRadius = Math.max(12, Math.floor(syncConfig.textWindowPx / lineHeight));
+            const start = clamp(baseLine - searchRadius, 0, Math.max(0, lines.length - 1));
+            const end = clamp(baseLine + searchRadius, 0, Math.max(0, lines.length - 1));
+            let best = null;
+
+            for (let i = start; i <= end; i++) {
+                const candidate = normalizeSyncText(lines.slice(i, i + 4).join(' '));
+                if (!candidate) continue;
+                const contains = candidate.includes(fingerprint.text) || fingerprint.text.includes(candidate);
+                if (!contains) continue;
+                const lengthRatio = Math.min(candidate.length, fingerprint.text.length) / Math.max(candidate.length, fingerprint.text.length);
+                const distanceScore = 1 - clamp(Math.abs(i - baseLine) / Math.max(1, searchRadius), 0, 1);
+                const confidence = 0.6 * lengthRatio + 0.4 * distanceScore;
+                if (!best || confidence > best.confidence) {
+                    // 返回像素位置也要加上 paddingTop，与锚点坐标系一致
+                    best = { top: paddingTop + i * lineHeight, confidence };
+                }
+            }
+
+            return best;
+        }
+
+        function applyTextRefinement(sourceType, baseTargetTop) {
+            if (sourceType === 'editor') {
+                const fingerprint = getEditorTopFingerprint();
+                const match = matchPreviewByText(baseTargetTop, fingerprint);
+                if (!match || match.confidence < syncConfig.textConfidenceThreshold) {
+                    return baseTargetTop;
+                }
+                const adjust = clamp(match.top - baseTargetTop, -syncConfig.maxTextAdjustPx, syncConfig.maxTextAdjustPx);
+                return baseTargetTop + adjust * syncConfig.textWeight;
+            }
+
+            const fingerprint = getPreviewTopFingerprint();
+            const match = matchEditorByText(baseTargetTop, fingerprint);
+            if (!match || match.confidence < syncConfig.textConfidenceThreshold) {
+                return baseTargetTop;
+            }
+            const adjust = clamp(match.top - baseTargetTop, -syncConfig.maxTextAdjustPx, syncConfig.maxTextAdjustPx);
+            return baseTargetTop + adjust * syncConfig.textWeight;
+        }
+
+        // Compute target scroll position: anchors as primary, percentage as fallback, text refinement only in sparse areas
+        function computeSyncTarget(sourceType, sourceElement, targetElement) {
+            const sourceTop = sourceElement.scrollTop;
+            const sourceDistance = getScrollableDistance(sourceElement);
+            const targetDistance = getScrollableDistance(targetElement);
+
+            // 百分比作为兜底
+            const percentFallback = sourceDistance > 0 ? (sourceTop / sourceDistance) * targetDistance : 0;
+
+            // 尝试使用锚点映射
+            const direction = sourceType === 'editor' ? 'editor-to-preview' : 'preview-to-editor';
+            const anchorResult = mapByAnchors(sourceTop, direction);
+
+            let baseTarget;
+            let mappingMode;
+            let anchorSpan = Infinity; // 当前所在锚点段的跨度（用于判断是否密集）
+            if (anchorResult !== null) {
+                // 锚点可用：100% 使用锚点结果，不混合百分比
+                baseTarget = anchorResult;
+                mappingMode = 'anchor';
+
+                // 计算当前锚点段的跨度（二分查找）
+                const anchors = scrollSyncIndex.anchors;
+                const fromKey = direction === 'editor-to-preview' ? 'editorPos' : 'previewPos';
+                let lo = 0, hi = anchors.length - 2;
+                while (lo < hi) {
+                    const mid = (lo + hi + 1) >> 1;
+                    if (anchors[mid][fromKey] <= sourceTop) lo = mid; else hi = mid - 1;
+                }
+                if (lo < anchors.length - 1) {
+                    anchorSpan = anchors[lo + 1][fromKey] - anchors[lo][fromKey];
+                }
+            } else {
+                // 锚点不可用：降级到百分比同步
+                baseTarget = percentFallback;
+                mappingMode = 'percent-fallback';
+            }
+
+            // 文本锚点微调：仅在锚点稀疏区域（跨度大于阈值）时生效
+            // 在密集锚点区域，锚点本身已足够精确，文本微调反而会引入噪声
+            let refined = baseTarget;
+            if (anchorSpan > syncConfig.anchorDenseThresholdPx || mappingMode === 'percent-fallback') {
+                refined = applyTextRefinement(sourceType, baseTarget);
+            }
+
+            if (window.__scrollSyncDebug && window.__scrollSyncDebug.enabled) {
+                const anchors = scrollSyncIndex.anchors;
+                // 找当前位置所在锚点段
+                let segInfo = '(无锚点)';
+                for (let i = 0; i < anchors.length - 1; i++) {
+                    const fromKey = direction === 'editor-to-preview' ? 'editorPos' : 'previewPos';
+                    if (sourceTop >= anchors[i][fromKey] && sourceTop <= anchors[i + 1][fromKey]) {
+                        segInfo = `[${anchors[i].segmentId}]→[${anchors[i + 1].segmentId}] span=${Math.round(anchorSpan)}`;
+                        break;
+                    }
+                }
+                const targetActual = targetElement.scrollTop;
+                const applied = Math.round(refined);
+                const skipped = Math.abs(refined - targetActual) < syncConfig.deadbandPx ? ' DEADBAND' : '';
+                const textSkipped = anchorSpan <= syncConfig.anchorDenseThresholdPx ? ' TEXT_SKIP' : '';
+                console.log(
+                    `[sync] ${sourceType} src=${Math.round(sourceTop)} → ${mappingMode}` +
+                    ` anchor=${anchorResult !== null ? Math.round(anchorResult) : 'n/a'}` +
+                    ` pct=${Math.round(percentFallback)}` +
+                    ` target=${applied} target_actual=${Math.round(targetActual)} diff=${applied - Math.round(targetActual)}${skipped}${textSkipped}` +
+                    ` | ${segInfo} (${anchors.length} anchors)`
+                );
+            }
+
+            return clamp(refined, 0, targetDistance);
+        }
+
+        function syncScroll(sourceType, sourceElement, targetElement) {
+            if (isUpdatingPreview) return;
+            if (workspaceMode !== WORKSPACE_MODE.SPLIT) return;
+
+            // 如果当前正在同步且来源不是本方向，拦截（防双向互拉）
+            if (isSyncingScroll && isSyncingScroll !== sourceType) return;
+
+            // Direction lock: prevent the other side from triggering sync
+            const now = Date.now();
+            if (syncDirectionLock && syncDirectionLock !== sourceType && now < syncDirectionLockUntil) {
+                return;
+            }
+
+            const targetTop = computeSyncTarget(sourceType, sourceElement, targetElement);
+            const currentTop = targetElement.scrollTop;
+
+            // Dead band: skip if change is tiny
+            if (Math.abs(targetTop - currentTop) < syncConfig.deadbandPx) return;
+
+            // Apply directly (no incremental smoothing -- that was causing the chaos)
+            isSyncingScroll = sourceType;  // 记录是哪个方向在驱动
+            syncDirectionLock = sourceType;
+            syncDirectionLockUntil = now + syncConfig.lockMs;
+
+            targetElement.scrollTop = targetTop;
+
+            // Release the sync guard after a short delay (one frame + margin)
+            if (syncReleaseTimer) clearTimeout(syncReleaseTimer);
+            syncReleaseTimer = setTimeout(() => {
                 isSyncingScroll = false;
-            }, 50);
+            }, syncConfig.lockMs + 20);
+        }
+
+        function syncFromEditor() {
+            syncScroll('editor', combinedContentInput, documentPreviewDiv);
+        }
+
+        function syncFromPreview() {
+            syncScroll('preview', documentPreviewDiv, combinedContentInput);
         }
 
         // 为输入框和预览区域添加滚动事件监听
         combinedContentInput.addEventListener('scroll', () => {
-            // 只有用户主动滚动编辑器时才同步到预览
-            if (!isUpdatingPreview) {
-                syncScroll(combinedContentInput, documentPreviewDiv);
-            }
+            syncFromEditor();
         });
 
         documentPreviewDiv.addEventListener('scroll', () => {
-            // 只有用户主动滚动预览时才同步到编辑器
-            if (!isUpdatingPreview) {
-                syncScroll(documentPreviewDiv, combinedContentInput);
-            }
+            syncFromPreview();
         });
 
         function schedulePreviewUpdate() {
@@ -1115,6 +1814,8 @@
                 if (segment.type === 'markdown') {
                     const previewSegmentDiv = document.createElement('div');
                     previewSegmentDiv.className = 'markdown-preview-segment';
+                    previewSegmentDiv.id = `preview-${segment.id}`;
+                    previewSegmentDiv.dataset.segmentId = segment.id;
                     previewSegmentDiv.innerHTML = marked.parse(segment.content, markedOptions);
                     documentPreviewDiv.appendChild(previewSegmentDiv);
                 } else if (segment.type === 'math' && segment.id) {
@@ -1122,6 +1823,7 @@
                     const container = document.createElement('div');
                     container.className = 'math-display-segment';
                     container.id = `preview-${segment.id}`;
+                    container.dataset.segmentId = segment.id;
                     documentPreviewDiv.appendChild(container);
                     
                     if (segment.content.trim()) {
@@ -1140,6 +1842,7 @@
                     const container = document.createElement('div');
                     container.className = 'mermaid-preview-segment';
                     container.id = `preview-${segment.id}`;
+                    container.dataset.segmentId = segment.id;
                     documentPreviewDiv.appendChild(container);
                     if (segment.content.trim()) {
                         try {
@@ -1209,14 +1912,18 @@
 
             // 延迟恢复同步滚动，等待 DOM 更新完成
             setTimeout(() => {
-                // 恢复编辑器的滚动位置（基于之前的百分比）
+                rebuildScrollSyncIndex(rawContent, documentStructure);
+
+                // 恢复编辑器和预览区的滚动位置（基于之前的百分比）
+                // 用 isSyncingScroll 防止恢复动作触发互相同步
+                isSyncingScroll = true;
+
                 const newEditorScrollHeight = combinedContentInput.scrollHeight;
                 const newEditorClientHeight = combinedContentInput.clientHeight;
                 if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
                     combinedContentInput.scrollTop = editorScrollPercentage * (newEditorScrollHeight - newEditorClientHeight);
                 }
 
-                // 预览区域同步到编辑器位置
                 if (!isNaN(editorScrollPercentage) && isFinite(editorScrollPercentage)) {
                     const previewScrollHeight = documentPreviewDiv.scrollHeight;
                     const previewClientHeight = documentPreviewDiv.clientHeight;
@@ -1225,6 +1932,13 @@
 
                 // 恢复同步滚动
                 isUpdatingPreview = false;
+
+                // 短延迟后释放同步锁，让恢复的 scroll 事件安静下来
+                setTimeout(() => {
+                    isSyncingScroll = false;
+                    // 用锚点做一次精确同步
+                    syncFromEditor();
+                }, 80);
             }, 100);
         }
 

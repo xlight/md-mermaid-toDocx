@@ -1,5 +1,10 @@
 # Agent 编码指南 - md-mermaid-toDocx
 
+## 使用中文
+- LLM输出和thinking使用中文
+- 文档使用中文
+- 注释使用中文
+
 ## 项目概述
 
 将 Markdown、Mermaid 图表和 LaTeX 数学公式转换为 DOCX 的 Web 应用。
@@ -23,11 +28,12 @@
   - 语言切换（中/英）
   - 主题应用
   - ASCII 输出模式
-  - 同步滚动
+  - **同步滚动**（使用 `__scrollSyncDebug.setEnabled(true)` 启用调试日志）
+  - 响应式布局（宽屏/窄屏切换）
 
 ### 代码检查
 - 无配置 linter
-- 遵循现有代码风格
+- 遵循现有代码风格（见下文代码规范）
 
 ## 代码规范
 
@@ -181,6 +187,23 @@ statusDiv.textContent = t('myKey');
 - 预览更新防抖：500ms
 - 同步滚动使用百分比计算
 - 图表渲染使用唯一 ID 防冲突
+
+## 同步滚动调试
+
+应用提供内置调试工具，位于 `window.__scrollSyncDebug` 对象：
+
+```javascript
+// 启用滚动同步调试日志（每次滚动输出详细信息）
+__scrollSyncDebug.setEnabled(true)
+
+// 查看当前锚点快照（锚点列表、配置、方向锁状态）
+__scrollSyncDebug.getSnapshot()
+
+// 实时监控（每500ms输出滚动位置，再次调用停止）
+__scrollSyncDebug.watch()
+```
+
+调试日志包含：源位置、映射模式、锚点结果、百分比结果、目标位置、实际位置差值、所在锚点段、锚点总数。
 
 ## Git 工作流
 

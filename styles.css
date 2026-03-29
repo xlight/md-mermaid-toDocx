@@ -489,6 +489,7 @@
             line-height: 1.6;
             overflow-y: auto;
             box-sizing: border-box;
+            position: relative; /* 确保子元素 offsetTop 相对于此容器 */
         }
         #documentPreview .markdown-preview-segment h1 { font-size: 18pt; font-weight: bold; }
         #documentPreview .markdown-preview-segment h2 { font-size: 14pt; font-weight: bold; }
