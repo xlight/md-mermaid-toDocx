@@ -40,8 +40,9 @@
 > 💡 提示：首次访问可能需要几秒钟加载 CDN 资源
 
 ## 💻 本地运行
+最简单就是 浏览器打开 index.html 。
 
-由于使用了 ES 模块和 Fetch API，需要通过 HTTP 服务器运行：
+但由于使用了 ES 模块和 Fetch API，完整体验需要通过 HTTP 服务器运行：
 
 ```bash
 # 使用 Python
@@ -170,8 +171,8 @@ graph TD
 - **包图**：`packet-beta` 🔥
 - **其他图表类型**
 
-> 🔥 标记表示 Mermaid 新增的图表类型  
-> ⚠️ 标记表示实验性功能  
+> 🔥 标记表示 Mermaid 新增的图表类型
+> ⚠️ 标记表示实验性功能
 > **注意**：default.md 中现已包含 **20+ 种图表类型**的完整示例，涵盖常用和高级图表类型。
 
 **混合渲染**：应用会智能选择渲染引擎，确保所有 Mermaid 图表类型都能正常显示。
@@ -286,9 +287,9 @@ __scrollSyncDebug.watch()
 mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',
-    flowchart: { 
-        htmlLabels: false, 
-        useMaxWidth: true 
+    flowchart: {
+        htmlLabels: false,
+        useMaxWidth: true
     },
     theme: 'default'
 });
