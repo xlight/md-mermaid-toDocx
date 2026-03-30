@@ -296,6 +296,10 @@
         const EDITOR_MIN_WIDTH = 280;
         const PREVIEW_MIN_WIDTH = 320;
         const DEFAULT_SPLIT_RATIO = 0.5;
+        const NARROW_EDITOR_MIN_HEIGHT = 180;
+        const NARROW_PREVIEW_MIN_HEIGHT = 200;
+        const NARROW_EMERGENCY_EDITOR_MIN_HEIGHT = 140;
+        const NARROW_EMERGENCY_PREVIEW_MIN_HEIGHT = 150;
 
         let workspaceMode = WORKSPACE_MODE.SPLIT;
         let lastSplitRatio = DEFAULT_SPLIT_RATIO;
@@ -380,6 +384,7 @@
 
             const shouldRender = options.triggerRender === true;
             const isDesktop = isDesktopLayout();
+            const skipNarrowFallback = options.skipNarrowFallback === true;
 
             workspaceMode = mode;
             editorPreviewContainer.dataset.viewMode = mode;
@@ -396,9 +401,23 @@
             } else if (mode === WORKSPACE_MODE.EDITOR_ONLY) {
                 editorWrapper.style.display = '';
                 previewWrapper.style.display = 'none';
+                editorPreviewContainer.classList.remove('narrow-split-emergency');
             } else if (mode === WORKSPACE_MODE.PREVIEW_ONLY) {
                 editorWrapper.style.display = 'none';
                 previewWrapper.style.display = '';
+                editorPreviewContainer.classList.remove('narrow-split-emergency');
+            }
+
+            if (!skipNarrowFallback && mode === WORKSPACE_MODE.SPLIT) {
+                const fallbackMode = evaluateNarrowSplitFallbackMode();
+                if (fallbackMode) {
+                    applyWorkspaceMode(fallbackMode, {
+                        triggerRender: shouldRender,
+                        skipNarrowFallback: true
+                    });
+                    showToast('可用高度不足，已自动切换到仅编辑模式', 'info', { duration: 1500 });
+                    return;
+                }
             }
 
             setViewModeButtonsState(mode);
@@ -406,6 +425,31 @@
             if (shouldRender) {
                 schedulePreviewUpdate();
             }
+        }
+
+        function evaluateNarrowSplitFallbackMode() {
+            if (!editorPreviewContainer) return null;
+            if (isDesktopLayout() || workspaceMode !== WORKSPACE_MODE.SPLIT) {
+                editorPreviewContainer.classList.remove('narrow-split-emergency');
+                return null;
+            }
+
+            const availableHeight = editorPreviewContainer.clientHeight;
+            const standardMinHeight = NARROW_EDITOR_MIN_HEIGHT + NARROW_PREVIEW_MIN_HEIGHT;
+            const emergencyMinHeight = NARROW_EMERGENCY_EDITOR_MIN_HEIGHT + NARROW_EMERGENCY_PREVIEW_MIN_HEIGHT;
+
+            if (availableHeight >= standardMinHeight) {
+                editorPreviewContainer.classList.remove('narrow-split-emergency');
+                return null;
+            }
+
+            if (availableHeight >= emergencyMinHeight) {
+                editorPreviewContainer.classList.add('narrow-split-emergency');
+                return null;
+            }
+
+            editorPreviewContainer.classList.remove('narrow-split-emergency');
+            return WORKSPACE_MODE.EDITOR_ONLY;
         }
 
         function calculateSplitRatioByPointer(clientX) {
