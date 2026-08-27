@@ -218,6 +218,8 @@
         let syncDirectionLock = null;
         let syncDirectionLockUntil = 0;
         let syncReleaseTimer = null;
+        let previewResizeObserver = null;
+        let previewResizeDebounce = null;
         let scrollSyncIndex = {
             anchors: [],
             editorRawContent: '',
@@ -232,7 +234,9 @@
             textWindowPx: 520,
             textConfidenceThreshold: 0.7,
             maxTextAdjustPx: 80,
-            anchorDenseThresholdPx: 200 // 锚点间距小于此值视为"密集"，跳过文本微调
+            anchorDenseThresholdPx: 200, // 锚点间距小于此值视为"密集"，跳过文本微调
+            reverseDeadbandMultiplier: 4, // 反方向软锁：deadbandPx × 此倍数
+            maxFrameStepPx: 100           // 反方向软锁：单帧最大位移
         };
 
         window.__scrollSyncDebug = {
@@ -249,6 +253,7 @@
                         editor: Math.round(a.editorPos),
                         preview: Math.round(a.previewPos)
                     })),
+                    quality: scrollSyncIndex.quality || { anchorCount: 0, coverage: 0, mergedLoss: 0 },
                     config: { ...syncConfig },
                     lock: {
                         direction: syncDirectionLock,
@@ -280,6 +285,90 @@
                     }
                     console.log(`[scroll-sync] editor=${Math.round(eTop)} preview=${Math.round(pTop)} | 锚点段: ${seg} | 锚点总数: ${anchors.length}`);
                 }, 500);
+            },
+            // 运行纯函数不变量自检，返回 { passed, failed, details }
+            runSelfTest() {
+                const test = window.__scrollSyncTest;
+                if (!test) return { passed: 0, failed: 0, details: ['__scrollSyncTest 未暴露'] };
+                const results = [];
+                let passed = 0, failed = 0;
+                function assert(name, cond) {
+                    if (cond) { passed++; results.push(`✅ ${name}`); }
+                    else { failed++; results.push(`❌ ${name}`); }
+                }
+
+                // mapByAnchors 单调性
+                const anchors = [{editorPos:0,previewPos:0},{editorPos:100,previewPos:200},{editorPos:200,previewPos:300}];
+                let prev = -1, monotonic = true;
+                for (let p = 0; p <= 200; p += 10) {
+                    const r = test.mapByAnchors(p, 'editor-to-preview', anchors);
+                    if (r < prev) monotonic = false;
+                    prev = r;
+                }
+                assert('mapByAnchors 单调性', monotonic);
+                // mapByAnchors 锚点精确
+                assert('mapByAnchors 锚点精确', test.mapByAnchors(100, 'editor-to-preview', anchors) === 200);
+                // mapByAnchors 边界 clamp
+                assert('mapByAnchors 边界 clamp', test.mapByAnchors(-50, 'editor-to-preview', anchors) === 0 && test.mapByAnchors(300, 'editor-to-preview', anchors) === 300);
+
+                // findInSource 三级回退
+                const fs1 = test.findInSource(['hello'], 'hello world', 0);
+                assert('findInSource 精确匹配', fs1 && fs1.offset === 0 && fs1.matchedLength === 5);
+                const fs2 = test.findInSource(['hello  world'], 'hello world', 0); // 模糊（多空格）
+                assert('findInSource 模糊匹配', fs2 && fs2.offset === 0);
+                const fs3 = test.findInSource(['*bold*'], 'bold text', 0); // 去 markdown 格式
+                assert('findInSource 去格式匹配', fs3 && fs3.offset === 0);
+                const fs4 = test.findInSource(['xyz'], 'hello world', 0);
+                assert('findInSource 未命中返回 null', fs4 === null);
+
+                // normalizeAnchors 合并策略
+                const raw = [
+                    {editorPos:0,previewPos:0,segmentId:'a'},
+                    {editorPos:0,previewPos:0,segmentId:'a-end'},
+                    {editorPos:100,previewPos:200,segmentId:'b'}
+                ];
+                const norm = test.normalizeAnchors(raw);
+                assert('normalizeAnchors 保留非 -end', norm.length === 2 && norm[0].segmentId === 'a');
+
+                // parseCombined 分割正确
+                const parsed = test.parseCombinedContentFromTextarea('text\n```mermaid\ngraph TD\nA-->B\n```\nmore');
+                assert('parseCombined 分割正确', parsed && parsed.length >= 2);
+
+                return { passed, failed, details: results };
+            },
+            // 在指定位置验证双向映射，返回 { editorToPreview, previewToEditor, roundTripError, anchorSpan }
+            verifySync(editorScrollTop) {
+                const anchors = scrollSyncIndex.anchors;
+                if (!anchors || anchors.length < 2) return null;
+                const e2p = mapByAnchors(editorScrollTop, 'editor-to-preview');
+                const p2e = mapByAnchors(e2p, 'preview-to-editor');
+                // 找当前锚点间距
+                let span = 0;
+                for (let i = 0; i < anchors.length - 1; i++) {
+                    if (editorScrollTop >= anchors[i].editorPos && editorScrollTop <= anchors[i+1].editorPos) {
+                        span = anchors[i+1].editorPos - anchors[i].editorPos;
+                        break;
+                    }
+                }
+                return {
+                    editorToPreview: e2p,
+                    previewToEditor: p2e,
+                    roundTripError: Math.abs(p2e - editorScrollTop),
+                    anchorSpan: span
+                };
+            },
+            // 多点采样验证，返回每个点的结果和连续性检查
+            verifySyncRange(points) {
+                const results = points.map(p => ({ point: p, ...this.verifySync(p) }));
+                // 连续性检查：映射结果应无大跳变
+                let maxJump = 0;
+                for (let i = 1; i < results.length; i++) {
+                    if (results[i] && results[i-1]) {
+                        const jump = Math.abs(results[i].editorToPreview - results[i-1].editorToPreview);
+                        if (jump > maxJump) maxJump = jump;
+                    }
+                }
+                return { results, maxJump, allInRange: results.every(r => r && r.roundTripError < 50) };
             }
         };
 
@@ -1396,10 +1485,10 @@
             return needles;
         }
 
-        // 在源文本中用多个候选针按顺序搜索，返回最先命中的字符偏移
-        // Search source text with multiple needles, return first match offset
+        // 在源文本中用多个候选针按顺序搜索，返回 { offset, matchedLength } 或 null
+        // Search source text with multiple needles, return { offset, matchedLength } or null
         function findInSource(needles, sourceText, searchFrom) {
-            if (!needles || needles.length === 0) return -1;
+            if (!needles || needles.length === 0) return null;
 
             const searchArea = sourceText.slice(searchFrom);
             for (const needle of needles) {
@@ -1408,7 +1497,7 @@
                 // 直接搜索
                 const idx = searchArea.indexOf(needle);
                 if (idx >= 0) {
-                    return searchFrom + idx;
+                    return { offset: searchFrom + idx, matchedLength: needle.length };
                 }
             }
 
@@ -1421,7 +1510,7 @@
                     const regex = new RegExp(fuzzy);
                     const match = regex.exec(searchArea);
                     if (match) {
-                        return searchFrom + match.index;
+                        return { offset: searchFrom + match.index, matchedLength: match[0].length };
                     }
                 } catch (e) {
                     // regex 构造失败，忽略
@@ -1446,12 +1535,12 @@
                 if (cleanNeedle.length >= 4) {
                     const cidx = cleanArea.indexOf(cleanNeedle);
                     if (cidx >= 0) {
-                        return searchFrom + stripMap[cidx];
+                        return { offset: searchFrom + stripMap[cidx], matchedLength: cleanNeedle.length };
                     }
                 }
             }
 
-            return -1;
+            return null;
         }
 
         // 为 markdown segment 内部的块级元素生成细粒度锚点
@@ -1484,11 +1573,11 @@
                 const needles = extractSearchNeedles(block);
                 if (needles.length === 0) return -1;
 
-                const localOffset = findInSource(needles, segSource, searchCursor);
-                if (localOffset >= 0) {
-                    searchCursor = localOffset + 1;
+                const match = findInSource(needles, segSource, searchCursor);
+                if (match) {
+                    searchCursor = match.offset + match.matchedLength;
                     matchedCount++;
-                    return segStart + localOffset;
+                    return segStart + match.offset;
                 }
                 failedCount++;
                 return -1;
@@ -1641,29 +1730,60 @@
             // Sort by editorPos, then normalize to ensure both axes are monotonically non-decreasing
             rawAnchors.sort((a, b) => a.editorPos - b.editorPos || a.previewPos - b.previewPos);
 
-            const normalizedAnchors = [];
-            let lastEditor = -1;
-            let lastPreview = -1;
-            rawAnchors.forEach(anchor => {
-                const safeEditor = Math.max(anchor.editorPos, lastEditor);
-                const safePreview = Math.max(anchor.previewPos, lastPreview);
-                if (normalizedAnchors.length > 0 && safeEditor === lastEditor && safePreview === lastPreview) return;
-                normalizedAnchors.push({ editorPos: safeEditor, previewPos: safePreview, segmentId: anchor.segmentId });
-                lastEditor = safeEditor;
-                lastPreview = safePreview;
-            });
+            // 提取为独立函数，方便测试暴露
+            const normalizedAnchors = normalizeAnchors(rawAnchors);
 
             scrollSyncIndex.anchors = normalizedAnchors;
             scrollSyncIndex.editorRawContent = rawContent;
             scrollSyncIndex.structure = structure;
             rebuildPreviewTextIndex();
-            debugSyncLog('index rebuilt', { anchors: normalizedAnchors.length });
+
+            // 锚点质量自检
+            const anchorCount = normalizedAnchors.length;
+            const coverage = anchorCount >= 2
+                ? (normalizedAnchors[anchorCount - 1].editorPos - normalizedAnchors[0].editorPos) / editorDistance
+                : 0;
+            const mergedLoss = rawAnchors.length - normalizedAnchors.length;
+            scrollSyncIndex.quality = { anchorCount, coverage, mergedLoss };
+
+            if (coverage < 0.5 || anchorCount < 4) {
+                debugSyncLog('WARN: 锚点质量不足', { anchorCount, coverage, mergedLoss });
+            }
+            debugSyncLog('index rebuilt', { anchors: anchorCount, coverage, mergedLoss });
+        }
+
+        // 单调化归一：确保 editorPos 和 previewPos 都单调非递减
+        // 当重复锚点（editorPos 和 previewPos 都相同）出现时，保留非 -end 的 segmentId
+        function normalizeAnchors(rawAnchors) {
+            const sorted = rawAnchors.slice().sort((a, b) => a.editorPos - b.editorPos || a.previewPos - b.previewPos);
+            const result = [];
+            let lastEditor = -1;
+            let lastPreview = -1;
+            sorted.forEach(anchor => {
+                const safeEditor = Math.max(anchor.editorPos, lastEditor);
+                const safePreview = Math.max(anchor.previewPos, lastPreview);
+                if (result.length > 0 && safeEditor === lastEditor && safePreview === lastPreview) {
+                    // 重复锚点：优先保留非 -end 的 segmentId（信息更丰富）
+                    const prev = result[result.length - 1];
+                    const prevIsEnd = prev.segmentId && prev.segmentId.endsWith('-end');
+                    const currIsEnd = anchor.segmentId && anchor.segmentId.endsWith('-end');
+                    if (prevIsEnd && !currIsEnd) {
+                        prev.segmentId = anchor.segmentId;
+                    }
+                    return;
+                }
+                result.push({ editorPos: safeEditor, previewPos: safePreview, segmentId: anchor.segmentId });
+                lastEditor = safeEditor;
+                lastPreview = safePreview;
+            });
+            return result;
         }
 
         // Piecewise linear interpolation through anchors.
         // direction: 'editor-to-preview' or 'preview-to-editor'
-        function mapByAnchors(scrollPos, direction) {
-            const anchors = scrollSyncIndex.anchors;
+        // customAnchors: 可选，用于测试时注入 anchors
+        function mapByAnchors(scrollPos, direction, customAnchors) {
+            const anchors = customAnchors || scrollSyncIndex.anchors;
             if (!anchors || anchors.length < 2) return null;
 
             // Pick the correct axis based on direction
@@ -1687,6 +1807,30 @@
             const progress = (scrollPos - a[fromKey]) / span;
             return a[toKey] + (b[toKey] - a[toKey]) * progress;
         }
+
+        // 纯函数版本：字符偏移 → 编辑器像素位置，用于测试暴露
+        function charOffsetToEditorPosPure(charOffset, lineBreaks, paddingTop, lineHeight, editorDistance) {
+            if (!lineBreaks || lineBreaks.length === 0) return clamp(paddingTop, 0, editorDistance);
+            let lo = 0, hi = lineBreaks.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi + 1) >> 1;
+                if (lineBreaks[mid] <= charOffset) lo = mid; else hi = mid - 1;
+            }
+            const pixelPos = paddingTop + lo * lineHeight;
+            return clamp(pixelPos, 0, editorDistance);
+        }
+
+        // 暴露纯函数供测试使用
+        window.__scrollSyncTest = {
+            mapByAnchors: (scrollPos, direction, anchors) => mapByAnchors(scrollPos, direction, anchors),
+            findInSource: (needles, sourceText, searchFrom) => findInSource(needles, sourceText, searchFrom),
+            normalizeAnchors: (rawAnchors) => normalizeAnchors(rawAnchors),
+            normalizeSyncText: (text) => normalizeSyncText(text),
+            parseCombinedContentFromTextarea: (rawText) => parseCombinedContentFromTextarea(rawText),
+            extractSearchNeedles: (element) => extractSearchNeedles(element),
+            charOffsetToEditorPos: (charOffset, lineBreaks, paddingTop, lineHeight, editorDistance) =>
+                charOffsetToEditorPosPure(charOffset, lineBreaks, paddingTop, lineHeight, editorDistance)
+        };
 
         function getEditorTopFingerprint() {
             const text = combinedContentInput.value || '';
@@ -1751,7 +1895,7 @@
             const searchRadius = Math.max(12, Math.floor(syncConfig.textWindowPx / lineHeight));
             const start = clamp(baseLine - searchRadius, 0, Math.max(0, lines.length - 1));
             const end = clamp(baseLine + searchRadius, 0, Math.max(0, lines.length - 1));
-            let best = null;
+            const hits = [];
 
             for (let i = start; i <= end; i++) {
                 const candidate = normalizeSyncText(lines.slice(i, i + 4).join(' '));
@@ -1761,13 +1905,15 @@
                 const lengthRatio = Math.min(candidate.length, fingerprint.text.length) / Math.max(candidate.length, fingerprint.text.length);
                 const distanceScore = 1 - clamp(Math.abs(i - baseLine) / Math.max(1, searchRadius), 0, 1);
                 const confidence = 0.6 * lengthRatio + 0.4 * distanceScore;
-                if (!best || confidence > best.confidence) {
-                    // 返回像素位置也要加上 paddingTop，与锚点坐标系一致
-                    best = { top: paddingTop + i * lineHeight, confidence };
-                }
+                // 返回像素位置也要加上 paddingTop，与锚点坐标系一致
+                hits.push({ top: paddingTop + i * lineHeight, confidence });
             }
 
-            return best;
+            if (!hits.length) return null;
+            hits.sort((x, y) => y.confidence - x.confidence);
+            // 歧义检测：最高与次高置信度差距 < 0.06 时跳过（与 matchPreviewByText 一致）
+            if (hits.length > 1 && Math.abs(hits[0].confidence - hits[1].confidence) < 0.06) return null;
+            return hits[0];
         }
 
         function applyTextRefinement(sourceType, baseTargetTop) {
@@ -1869,24 +2015,34 @@
             // 如果当前正在同步且来源不是本方向，拦截（防双向互拉）
             if (isSyncingScroll && isSyncingScroll !== sourceType) return;
 
-            // Direction lock: prevent the other side from triggering sync
+            // Direction lock: 软锁策略
+            // 同方向立即响应；反方向在锁定期内不直接跳过，而是用更大 deadband + 限幅
             const now = Date.now();
-            if (syncDirectionLock && syncDirectionLock !== sourceType && now < syncDirectionLockUntil) {
-                return;
-            }
+            const isReverseLocked = syncDirectionLock && syncDirectionLock !== sourceType && now < syncDirectionLockUntil;
 
             const targetTop = computeSyncTarget(sourceType, sourceElement, targetElement);
             const currentTop = targetElement.scrollTop;
+            const delta = targetTop - currentTop;
 
-            // Dead band: skip if change is tiny
-            if (Math.abs(targetTop - currentTop) < syncConfig.deadbandPx) return;
+            // Dead band: 反方向用放大 deadband，同方向用正常 deadband
+            const effectiveDeadband = isReverseLocked
+                ? syncConfig.deadbandPx * syncConfig.reverseDeadbandMultiplier
+                : syncConfig.deadbandPx;
+            if (Math.abs(delta) < effectiveDeadband) return;
+
+            // 反方向锁定期内限幅，抑制小幅互拉但放行用户主动的大位移切换
+            let appliedTop = targetTop;
+            if (isReverseLocked) {
+                const clampedDelta = clamp(delta, -syncConfig.maxFrameStepPx, syncConfig.maxFrameStepPx);
+                appliedTop = currentTop + clampedDelta;
+            }
 
             // Apply directly (no incremental smoothing -- that was causing the chaos)
             isSyncingScroll = sourceType;  // 记录是哪个方向在驱动
             syncDirectionLock = sourceType;
             syncDirectionLockUntil = now + syncConfig.lockMs;
 
-            targetElement.scrollTop = targetTop;
+            targetElement.scrollTop = appliedTop;
 
             // Release the sync guard after a short delay (one frame + margin)
             if (syncReleaseTimer) clearTimeout(syncReleaseTimer);
@@ -2066,6 +2222,24 @@
 
                 // 恢复同步滚动
                 isUpdatingPreview = false;
+
+                // 注册 ResizeObserver 监听预览区尺寸变化（图片加载、字体切换等）
+                // 仅重建索引，不保存/恢复滚动位置（与 updateFullPreview 中的重建不同）
+                if (previewResizeObserver) previewResizeObserver.disconnect();
+                previewResizeObserver = new ResizeObserver(() => {
+                    if (previewResizeDebounce) clearTimeout(previewResizeDebounce);
+                    previewResizeDebounce = setTimeout(() => {
+                        if (isUpdatingPreview) return;
+                        isUpdatingPreview = true;
+                        const lastRaw = scrollSyncIndex.editorRawContent;
+                        const lastStruct = scrollSyncIndex.structure;
+                        if (lastRaw && lastStruct && lastStruct.length > 0) {
+                            rebuildScrollSyncIndex(lastRaw, lastStruct);
+                        }
+                        isUpdatingPreview = false;
+                    }, 200);
+                });
+                previewResizeObserver.observe(documentPreviewDiv);
 
                 // 短延迟后释放同步锁，让恢复的 scroll 事件安静下来
                 setTimeout(() => {

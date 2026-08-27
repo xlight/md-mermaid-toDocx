@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Scroll Sync 纯函数不变量测试</title>
+    <!-- CDN 加载 QUnit，零 npm 依赖 -->
+    <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.20.0.css">
+    <script src="https://code.jquery.com/qunit/qunit-2.20.0.js"></script>
+</head>
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+
+    <!-- iframe 加载完整应用，从 contentWindow 获取 __scrollSyncTest -->
+    <iframe id="appFrame" src="../index.html" style="position:absolute;left:-9999px;top:-9999px;width:1024px;height:768px;"></iframe>
+
+    <script>
+        // 等待 iframe 加载完成后再运行测试
+        const appFrame = document.getElementById('appFrame');
+
+        QUnit.config.autostart = false;
+
+        appFrame.addEventListener('load', function() {
+            const win = appFrame.contentWindow;
+            const test = win.__scrollSyncTest;
+
+            if (!test) {
+                QUnit.test('环境检查', function(assert) {
+                    assert.ok(false, '__scrollSyncTest 未在 iframe 中暴露 — app.js 可能未正确加载');
+                });
+                QUnit.start();
+                return;
+            }
+
+            // ============ mapByAnchors ============
+            QUnit.module('mapByAnchors', function() {
+                const anchors = [
+                    { editorPos: 0, previewPos: 0 },
+                    { editorPos: 100, previewPos: 200 },
+                    { editorPos: 200, previewPos: 300 }
+                ];
+
+                QUnit.test('单调性：单调递增的 scrollPos → 映射结果也单调递增', function(assert) {
+                    let prev = -Infinity;
+                    let monotonic = true;
+                    for (let p = 0; p <= 200; p += 5) {
+                        const r = test.mapByAnchors(p, 'editor-to-preview', anchors);
+                        if (r < prev) monotonic = false;
+                        prev = r;
+                    }
+                    assert.ok(monotonic, '映射结果单调递增');
+                });
+
+                QUnit.test('锚点精确：scrollPos = anchors[i].editorPos → 返回 anchors[i].previewPos', function(assert) {
+                    assert.equal(test.mapByAnchors(0, 'editor-to-preview', anchors), 0, '锚点 0');
+                    assert.equal(test.mapByAnchors(100, 'editor-to-preview', anchors), 200, '锚点 1');
+                    assert.equal(test.mapByAnchors(200, 'editor-to-preview', anchors), 300, '锚点 2');
+                });
+
+                QUnit.test('边界 clamp：超出范围返回首/末锚点值', function(assert) {
+                    assert.equal(test.mapByAnchors(-50, 'editor-to-preview', anchors), 0, '低于首锚点');
+                    assert.equal(test.mapByAnchors(300, 'editor-to-preview', anchors), 300, '高于末锚点');
+                });
+
+                QUnit.test('双向对称性：editor→preview→editor 在锚点位置回到原值', function(assert) {
+                    [0, 100, 200].forEach(ePos => {
+                        const pPos = test.mapByAnchors(ePos, 'editor-to-preview', anchors);
+                        const back = test.mapByAnchors(pPos, 'preview-to-editor', anchors);
+                        assert.equal(back, ePos, `editorPos=${ePos} round-trip`);
+                    });
+                });
+            });
+
+            // ============ findInSource ============
+            QUnit.module('findInSource', function() {
+                QUnit.test('精确匹配', function(assert) {
+                    const r = test.findInSource(['hello'], 'hello world', 0);
+                    assert.ok(r, '应命中');
+                    assert.equal(r.offset, 0, 'offset=0');
+                    assert.equal(r.matchedLength, 5, 'matchedLength=5');
+                });
+
+                QUnit.test('模糊匹配（忽略多余空格）', function(assert) {
+                    const r = test.findInSource(['hello  world'], 'hello world', 0);
+                    assert.ok(r, '应通过模糊 regex 命中');
+                    assert.equal(r.offset, 0, 'offset=0');
+                });
+
+                QUnit.test('去 markdown 格式匹配', function(assert) {
+                    const r = test.findInSource(['*bold*'], 'bold text', 0);
+                    assert.ok(r, '应通过去格式命中');
+                    assert.equal(r.offset, 0, 'offset=0');
+                });
+
+                QUnit.test('未命中返回 null', function(assert) {
+                    const r = test.findInSource(['xyz'], 'hello world', 0);
+                    assert.equal(r, null, '未命中返回 null');
+                });
+
+                QUnit.test('searchFrom 控制起始位置', function(assert) {
+                    const r = test.findInSource(['hello'], 'hello hello', 3);
+                    assert.ok(r, '应从偏移 3 开始搜索命中第二个 hello');
+                    assert.equal(r.offset, 6, 'offset=6');
+                });
+
+                QUnit.test('重复内容不误命中（searchCursor 步进）', function(assert) {
+                    const source = 'aaa bbb aaa ccc';
+                    let cursor = 0;
+                    const m1 = test.findInSource(['aaa'], source, cursor);
+                    assert.ok(m1, '第一次命中');
+                    cursor = m1.offset + m1.matchedLength;
+                    const m2 = test.findInSource(['aaa'], source, cursor);
+                    assert.ok(m2, '第二次命中');
+                    assert.ok(m2.offset > m1.offset, '第二次命中位置应大于第一次');
+                });
+            });
+
+            // ============ normalizeAnchors ============
+            QUnit.module('normalizeAnchors', function() {
+                QUnit.test('强制单调（无重复保留全部）', function(assert) {
+                    const raw = [
+                        { editorPos: 0, previewPos: 0, segmentId: 'a' },
+                        { editorPos: 50, previewPos: 100, segmentId: 'b' },
+                        { editorPos: 100, previewPos: 200, segmentId: 'c' }
+                    ];
+                    const norm = test.normalizeAnchors(raw);
+                    assert.equal(norm.length, 3, '无重复，保留全部');
+                });
+
+                QUnit.test('合并策略：重复锚点保留非 -end', function(assert) {
+                    const raw = [
+                        { editorPos: 0, previewPos: 0, segmentId: 'a' },
+                        { editorPos: 0, previewPos: 0, segmentId: 'a-end' },
+                        { editorPos: 100, previewPos: 200, segmentId: 'b' }
+                    ];
+                    const norm = test.normalizeAnchors(raw);
+                    assert.equal(norm.length, 2, '重复锚点合并为一个');
+                    assert.equal(norm[0].segmentId, 'a', '保留非 -end 的 segmentId');
+                });
+            });
+
+            // ============ parseCombinedContentFromTextarea ============
+            QUnit.module('parseCombinedContentFromTextarea', function() {
+                QUnit.test('分割正确：含 mermaid 块', function(assert) {
+                    const parsed = test.parseCombinedContentFromTextarea('text\n```mermaid\ngraph TD\nA-->B\n```\nmore');
+                    assert.ok(parsed, '应返回非 null');
+                    assert.ok(parsed.length >= 2, '至少分割为 2 段');
+                });
+
+                QUnit.test('分割正确：含 math 块', function(assert) {
+                    const parsed = test.parseCombinedContentFromTextarea('text\n$$\nx^2 + y^2 = r^2\n$$\nmore');
+                    assert.ok(parsed, '应返回非 null');
+                    assert.ok(parsed.length >= 2, '至少分割为 2 段');
+                });
+            });
+
+            // ============ charOffsetToEditorPos ============
+            QUnit.module('charOffsetToEditorPos', function() {
+                const lineBreaks = [0, 4, 8];
+                const paddingTop = 10;
+                const lineHeight = 22.4;
+                const editorDistance = 1000;
+
+                QUnit.test('行首字符偏移 → paddingTop + lineNum × lineHeight', function(assert) {
+                    assert.equal(test.charOffsetToEditorPos(0, lineBreaks, paddingTop, lineHeight, editorDistance), 10, '第 0 行');
+                    assert.equal(test.charOffsetToEditorPos(4, lineBreaks, paddingTop, lineHeight, editorDistance), 32.4, '第 1 行');
+                    assert.equal(test.charOffsetToEditorPos(8, lineBreaks, paddingTop, lineHeight, editorDistance), 54.8, '第 2 行');
+                });
+
+                QUnit.test('行中字符偏移 → 同一行的像素位置', function(assert) {
+                    assert.equal(test.charOffsetToEditorPos(6, lineBreaks, paddingTop, lineHeight, editorDistance), 32.4, '第 1 行中间');
+                });
+
+                QUnit.test('超出文本长度 → 映射到最后一行位置（非 editorDistance）', function(assert) {
+                    // 超出文本的偏移会二分查找到最后一行，映射到最后一行的像素位置
+                    // 这不是 clamp 到 editorDistance，而是映射到最后一行
+                    const lastLinePos = paddingTop + 2 * lineHeight; // 第 2 行 = 54.8
+                    assert.equal(test.charOffsetToEditorPos(9999, lineBreaks, paddingTop, lineHeight, editorDistance), lastLinePos, '超出范围映射到最后一行');
+                });
+
+                QUnit.test('空文本 → 返回 paddingTop', function(assert) {
+                    assert.equal(test.charOffsetToEditorPos(0, [], paddingTop, lineHeight, editorDistance), 10, '空文本');
+                });
+            });
+
+            // ============ 调试接口 runSelfTest ============
+            QUnit.module('__scrollSyncDebug.runSelfTest', function() {
+                QUnit.test('runSelfTest 返回结果且 failed=0', function(assert) {
+                    const result = win.__scrollSyncDebug.runSelfTest();
+                    assert.ok(result, '应返回结果对象');
+                    assert.equal(result.failed, 0, 'failed 应为 0');
+                });
+            });
+
+            QUnit.start();
+        });
+    </script>
+</body>
+</html>
