@@ -1,23 +1,4 @@
-# Scroll Sync Specification
-
-## Purpose
-
-Define the requirements for synchronizing scroll position between the editor (textarea) and preview (rendered HTML) panes. The sync strategy must handle heterogeneous content heights (mermaid diagrams, math formulas) and maintain block-level alignment accuracy.
-
-## Requirements
-
-### Requirement: 系统 SHALL 使用三层混合同步滚动策略
-
-系统 SHALL 在编辑区与预览区同步滚动时采用三层策略，按优先级依次为：结构锚点分段映射（主）、文本指纹微调（辅）、百分比同步（兜底）。锚点可用时 100% 使用锚点映射结果，不与百分比混合。
-
-#### Scenario: 锚点可用时完全使用锚点映射
-- **WHEN** 用户滚动编辑区或预览区，且结构锚点索引可用
-- **THEN** 系统 100% 依据锚点分段映射计算目标滚动位置
-- **AND** 不混合百分比同步结果
-
-#### Scenario: 锚点不可用时自动降级
-- **WHEN** 锚点索引为空或包含不足 2 个锚点
-- **THEN** 系统自动回退到百分比同步
+## MODIFIED Requirements
 
 ### Requirement: 系统 SHALL 基于多层级锚点构建分段单调映射
 
@@ -52,41 +33,6 @@ Define the requirements for synchronizing scroll position between the editor (te
 - **WHEN** 系统为第二个代码块执行文本匹配
 - **THEN** 匹配游标已越过第一个代码块的匹配位置
 - **AND** 第二个代码块的锚点正确映射到其在源文本中的实际位置
-
-### Requirement: 编辑器像素位置 SHALL 基于行号精确计算
-
-系统 SHALL 使用 `paddingTop + lineNumber × lineHeight` 计算 textarea 中字符偏移对应的像素位置（scrollTop 值），而非使用比例映射（`charRatio × scrollableDistance`）。
-
-#### Scenario: 字符偏移转换为行号再转换为像素
-- **GIVEN** textarea 的 `paddingTop = 15px`，`lineHeight = 22.4px`
-- **WHEN** 某个 segment 的 `sourceStart` 对应第 100 行
-- **THEN** 计算得到的 `editorPos = 15 + 100 × 22.4 = 2255px`
-- **AND** 行号通过对 lineBreaks 数组的二分查找获得
-
-### Requirement: Intra-segment 锚点 SHALL 使用三遍匹配策略
-
-系统 SHALL 对 markdown segment 内的块级元素采用三遍策略确定其在源文本中的字符偏移：
-
-1. **第一遍：文本匹配** — 从预览元素提取搜索针（needles），在源文本中按顺序搜索。搜索支持三级回退：精确子串匹配 → 模糊正则匹配（忽略空格差异）→ 去 markdown 格式后匹配（去除 `*`、`` ` ``、`~`、`[]()` 等格式符号）
-2. **第二遍：去乱序** — 确保匹配到的字符偏移序列单调递增，丢弃乱序结果
-3. **第三遍：线性插值** — 对未匹配的块元素，用前后已匹配的邻居做线性插值
-
-#### Scenario: 标题元素精确匹配
-- **GIVEN** 预览中有 `<h3>功能特性</h3>`
-- **WHEN** 系统在源文本中搜索 "功能特性"
-- **THEN** 命中 `### 功能特性` 所在位置
-- **AND** 返回该行的字符偏移
-
-#### Scenario: 含格式符号的段落匹配
-- **GIVEN** 源文本为 `这是 **粗体** 文本`，预览元素文本为 "这是 粗体 文本"
-- **WHEN** 精确匹配和模糊正则均失败
-- **THEN** 系统去掉源文本中的 `**` 后再匹配
-- **AND** 成功定位到该段落的字符偏移
-
-#### Scenario: 匹配失败时线性插值
-- **GIVEN** 某个块元素的所有搜索针均未命中
-- **WHEN** 前一个已匹配元素在字符偏移 500，后一个在字符偏移 800
-- **THEN** 该元素的偏移按位置比例插值于 [500, 800] 之间
 
 ### Requirement: 系统 SHALL 在稀疏锚点区域应用文本指纹微调
 
@@ -145,53 +91,29 @@ Define the requirements for synchronizing scroll position between the editor (te
 - **THEN** `syncScroll()` 直接返回，不执行任何同步逻辑
 
 #### Scenario: 预览区尺寸变化后重建索引
-- **GIVEN** 预览区已建立锚点索引
-- **WHEN** 预览区尺寸发生变化（图片加载、字体切换、窗口 resize）
-- **THEN** 系统 debounce 后重建锚点索引
-- **AND** 重建后同步映射基于新的 DOM 布局
+- **GIVEN** 预览区包含异步加载的 `<img>` 元素
+- **WHEN** 图片加载完成导致预览区 scrollHeight 变化
+- **THEN** 系统在 debounce 延迟后重建锚点索引
+- **AND** 重建基于最新的 DOM 布局，修正因图片加载导致的锚点偏移
 
-### Requirement: 系统 SHALL 提供调试接口
+## ADDED Requirements
 
-系统 SHALL 通过 `window.__scrollSyncDebug` 对象提供滚动同步调试能力，方便开发和问题诊断。
+### Requirement: 系统 SHALL 在重建索引后执行锚点质量自检
 
-#### Scenario: 启用调试日志
-- **WHEN** 在浏览器控制台执行 `__scrollSyncDebug.setEnabled(true)`
-- **THEN** 每次同步滚动事件输出详细日志，包括：源位置、映射模式（anchor/percent-fallback）、锚点结果、百分比结果、最终目标、实际差值、所在锚点段、锚点总数
+系统 SHALL 在 `rebuildScrollSyncIndex` 完成后评估锚点索引质量，包括锚点数量、覆盖率（锚点覆盖的 editorPos 范围占可滚动距离的比例）、以及因单调化合并丢失的锚点比例。质量不足时 SHALL 记录警告并通过调试接口暴露质量指标。
 
-#### Scenario: 查看锚点快照
-- **WHEN** 执行 `__scrollSyncDebug.getSnapshot()`
-- **THEN** 返回当前锚点列表（含 segmentId、editorPos、previewPos）、配置参数、方向锁状态
+#### Scenario: 锚点质量良好
+- **WHEN** 重建后锚点数量充足（≥ 4）且覆盖率高（≥ 80%）
+- **THEN** 系统正常使用锚点映射，不记录警告
 
-#### Scenario: 实时监控
-- **WHEN** 执行 `__scrollSyncDebug.watch()`
-- **THEN** 每 500ms 输出当前编辑器/预览滚动位置及所在锚点段
-- **AND** 再次调用停止监控
-
-#### Scenario: 锚点不足时自动降级
-- **GIVEN** 锚点索引建立后锚点数量 < 2
-- **WHEN** 调用 `syncScroll()`
-- **THEN** 系统自动降级到百分比同步（因锚点 < 2 时 mapByAnchors 返回 null）
+#### Scenario: 锚点质量不足时记录警告
+- **WHEN** 重建后锚点数量不足（< 4）或覆盖率低（< 50%）
+- **THEN** 系统通过调试日志记录警告，包含锚点数量、覆盖率、合并丢失数
+- **AND** 同步逻辑自动降级到百分比同步（因锚点 < 2 时 mapByAnchors 返回 null）
 
 #### Scenario: 调试接口暴露质量指标
 - **WHEN** 执行 `__scrollSyncDebug.getSnapshot()`
 - **THEN** 返回结果包含质量指标字段（anchorCount、coverage、mergedLoss）
-
-### Requirement: 系统 SHALL 在重建索引后执行锚点质量自检
-
-系统 SHALL 在 `rebuildScrollSyncIndex` 完成后执行锚点质量自检，计算覆盖率（coverage）和合并损失（mergedLoss），并通过 `__scrollSyncDebug.getSnapshot()` 暴露。当覆盖率低于阈值时输出警告日志。
-
-#### Scenario: 自检计算覆盖率
-- **GIVEN** 预览中有 N 个块级元素
-- **WHEN** 锚点索引重建完成
-- **THEN** 系统计算覆盖率 = 已建立锚点的块级元素数 / N
-- **AND** 覆盖率通过 `getSnapshot().coverage` 暴露
-
-#### Scenario: 自检计算合并损失
-- **GIVEN** 原始锚点序列长度为 M，单调化归一后长度为 K
-- **WHEN** 锚点索引重建完成
-- **THEN** 系统计算 mergedLoss = M - K
-- **AND** mergedLoss 通过 `getSnapshot().mergedLoss` 暴露
-- **AND** mergedLoss > 0 时输出警告日志
 
 ### Requirement: 系统 SHALL 提供滚动同步不变量自检能力
 
@@ -199,7 +121,7 @@ Define the requirements for synchronizing scroll position between the editor (te
 
 1. **mapByAnchors 单调性**：对单调递增的 scrollPos 序列，映射结果单调递增
 2. **mapByAnchors 锚点精确**：scrollPos 等于某锚点的 fromKey 时，返回该锚点的 toKey
-3. **mapByAnchors 输界 clamp**：超出锚点范围的 scrollPos 返回首/末锚点值
+3. **mapByAnchors 边界 clamp**：超出锚点范围的 scrollPos 返回首/末锚点值
 4. **mapByAnchors 双向对称**：editor→preview 再 preview→editor，在锚点位置回到原值
 5. **findInSource 三级回退**：精确→模糊→去格式，逐级尝试
 6. **findInSource searchFrom**：从指定位置开始搜索，不命中之前内容
