@@ -721,11 +721,11 @@
             if (bg.toLowerCase() === fg.toLowerCase()) {
                 fg = relativeLuminance(bg) > 0.5 ? '#09090b' : '#fafafa';
             }
-            const line = bmTheme.line || mixColors(fg, bg, 0.5);
-            const accent = bmTheme.accent || mixColors(fg, bg, 0.15);
-            const muted = bmTheme.muted || mixColors(fg, bg, 0.3);
-            const surface = bmTheme.surface || mixColors(fg, bg, 0.08);
-            const border = bmTheme.border || mixColors(fg, bg, 0.2);
+            const line = bmTheme.line || mixColors(bg, fg, 0.5);
+            const accent = bmTheme.accent || mixColors(bg, fg, 0.15);
+            const muted = bmTheme.muted || mixColors(bg, fg, 0.3);
+            const surface = bmTheme.surface || mixColors(bg, fg, 0.08);
+            const border = bmTheme.border || mixColors(bg, fg, 0.2);
             const light = isLightTheme({ bg });
 
             // 基础变量
@@ -735,10 +735,10 @@
                 lineColor: line,
                 primaryColor: light ? mixColors(accent, bg, 0.85) : mixColors(accent, bg, 0.3),
                 secondaryColor: surface,
-                tertiaryColor: mixColors(fg, bg, 0.12),
+                tertiaryColor: mixColors(bg, fg, 0.12),
                 primaryBorderColor: border,
-                secondaryBorderColor: mixColors(fg, bg, 0.15),
-                tertiaryBorderColor: mixColors(fg, bg, 0.1),
+                secondaryBorderColor: mixColors(bg, fg, 0.15),
+                tertiaryBorderColor: mixColors(bg, fg, 0.1),
                 noteBkgColor: surface,
                 noteBorderColor: border,
                 noteTextColor: fg,
@@ -772,15 +772,18 @@
             vars.quadrantYAxisTextFill = fg;
             vars.quadrantTitleFill = fg;
 
+            // Class / ER
+            vars.classText = fg;
+
             // Gantt
             vars.taskBkgColor = light ? mixColors(accent, bg, 0.7) : mixColors(accent, bg, 0.4);
             vars.taskTextDarkColor = light ? fg : bg;
             vars.taskTextClickableColor = fg;
             vars.taskTextOutsideColor = fg;
             vars.sectionBkgColor = surface;
-            vars.altSectionBkgColor = mixColors(fg, bg, 0.05);
-            vars.sectionBkgColor2 = mixColors(fg, bg, 0.1);
-            vars.gridColor = mixColors(fg, bg, 0.15);
+            vars.altSectionBkgColor = mixColors(bg, fg, 0.05);
+            vars.sectionBkgColor2 = mixColors(bg, fg, 0.1);
+            vars.gridColor = mixColors(bg, fg, 0.15);
             vars.todayLineColor = accent;
 
             // Journey
@@ -808,7 +811,7 @@
             vars.systemBorder = border;
             vars.containerBkg = surface;
             vars.containerBorder = border;
-            vars.externalBkg = mixColors(fg, bg, 0.1);
+            vars.externalBkg = mixColors(bg, fg, 0.1);
             vars.externalBorder = border;
 
             return vars;
@@ -817,9 +820,9 @@
         function generateThemeCSS(bmTheme) {
             const bg = bmTheme.bg || '#ffffff';
             const fg = bmTheme.fg || '#09090b';
-            const line = bmTheme.line || mixColors(fg, bg, 0.5);
+            const line = bmTheme.line || mixColors(bg, fg, 0.5);
             const light = isLightTheme({ bg });
-            const taskTextColor = light ? bg : fg;
+            const taskTextColor = fg;
             return [
                 '.node rect { rx: 6; ry: 6; }',
                 '.edgePath .path { stroke-width: 1.5; }',
