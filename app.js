@@ -47,9 +47,10 @@
                 themeHint: '主题仅适用于流程图、时序图、类图和 ER 图',
                 outputSectionTitle: '输出模式',
                 outputModeHelpTitle: '输出模式说明：',
-                svgModeDesc: '应用主题到支持的图表，其他图表使用原生样式',
+                svgModeDesc: '4种图表使用精美主题，其他图表使用原生样式',
                 asciiModeDesc: '将图表转换为纯文本格式，适合终端和聊天工具',
                 classicModeDesc: '所有图表使用原生 Mermaid.js 渲染，最大兼容性',
+                asciiFallbackHint: 'SVG (ASCII 不可用)',
                 closeButton: '关闭',
                 mathRendering: '数学公式',
                 mathGenerating: '正在渲染数学公式...',
@@ -108,9 +109,10 @@
                 themeHint: 'Themes only apply to Flowchart, Sequence, Class, and ER diagrams',
                 outputSectionTitle: 'Output Mode',
                 outputModeHelpTitle: 'Output Mode Description:',
-                svgModeDesc: 'Apply themes to supported diagrams, others use native styles',
+                svgModeDesc: '4 diagram types use beautiful themes, others use native styles',
                 asciiModeDesc: 'Convert diagrams to plain text, suitable for terminals and chat tools',
                 classicModeDesc: 'All diagrams use native Mermaid.js rendering for maximum compatibility',
+                asciiFallbackHint: 'SVG (ASCII unavailable)',
                 closeButton: 'Close',
                 mathRendering: 'Math Formula',
                 mathGenerating: 'Rendering math formula...',
@@ -560,7 +562,7 @@
         // ===== 保留原 Mermaid.js 配置（用于 Gantt, Pie 等图表） =====
         mermaid.initialize({
             startOnLoad: false, securityLevel: 'loose',
-            flowchart: { htmlLabels: false, useMaxWidth: true }, theme: 'default',
+            flowchart: { htmlLabels: false, useMaxWidth: true }, theme: 'base', look: 'neo',
             gantt: {
                 fontSize: 20,
                 sectionFontSize: 20,
@@ -569,21 +571,78 @@
                 barGap: 10
             },
             themeVariables: {
+                // zinc-light 色系，与 beautiful-mermaid 默认主题协调
+                background: '#ffffff',
+                primaryTextColor: '#09090b',
+                lineColor: '#d4d4d8',
+                primaryColor: '#18181b',
+                secondaryColor: '#fafafa',
+                tertiaryColor: '#f4f4f5',
+                primaryBorderColor: '#e4e4e7',
+                noteBkgColor: '#f4f4f5',
+                noteBorderColor: '#e4e4e7',
+                noteTextColor: '#09090b',
+                titleColor: '#09090b',
                 // 甘特图时间轴相关字体大小配置
-                gridTextSize: '20px',      // 时间轴刻度标签字体大小 (默认约10px)
-            }
+                gridTextSize: '20px',
+            },
+            themeCSS: [
+                '.node rect { rx: 6; ry: 6; }',
+                '.edgePath .path { stroke-width: 1.5; }',
+                '.marker { fill: #d4d4d8; }',
+                '.taskText { fill: #ffffff; }',
+                '.pieTitleText { fill: #09090b; }',
+            ].join('\n')
         });
 
 // ===== CDN 加载检测 =====
         // 检测 beautiful-mermaid 是否成功加载
-        const beautifulMermaidLoaded = typeof beautifulMermaid !== 'undefined';
+        // 注意：1.1.3 改用 ESM 异步加载，初始检测时可能尚未就绪
+        let beautifulMermaidLoaded = typeof beautifulMermaid !== 'undefined';
         if (!beautifulMermaidLoaded) {
-            console.warn('beautiful-mermaid CDN 加载失败，主题功能不可用。所有图表将使用原生 Mermaid.js 渲染。');
-            console.warn('备选 CDN: https://cdnjs.cloudflare.com/ajax/libs/beautiful-mermaid/0.1.3/beautiful-mermaid.browser.global.js');
+            console.warn('beautiful-mermaid 尚未加载（ESM 异步加载中），主题功能暂不可用。图表将先用原生 Mermaid.js 渲染，加载完成后自动切换。');
         } else {
             console.log('✓ beautiful-mermaid 加载成功');
             console.log('✓ Mermaid.js 加载成功');
         }
+
+        // 监听 ESM 加载完成事件，更新状态并重渲染
+        window.addEventListener('beautiful-mermaid-loaded', () => {
+            beautifulMermaidLoaded = typeof beautifulMermaid !== 'undefined';
+            console.log('✓ beautiful-mermaid ESM 加载完成，触发重渲染');
+            // 重新初始化主题管理器（如果之前因未加载而跳过）
+            if (beautifulMermaidLoaded && !themeManager && beautifulMermaid.THEMES) {
+                themeManager = new ThemeManager();
+                // 重新填充主题选择器
+                if (beautifulMermaid.THEMES) {
+                    themePicker.innerHTML = '';
+                    const themeNames = Object.keys(beautifulMermaid.THEMES);
+                    themeNames.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name.split('-').map(word =>
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ');
+                        themePicker.appendChild(option);
+                    });
+                    // 恢复用户之前选择的主题
+                    const savedTheme = localStorage.getItem('selectedTheme');
+                    if (savedTheme) {
+                        try {
+                            const themeObj = JSON.parse(savedTheme);
+                            // 尝试匹配内置主题名
+                            const matchName = themeNames.find(name =>
+                                JSON.stringify(beautifulMermaid.THEMES[name]) === savedTheme);
+                            if (matchName) themePicker.value = matchName;
+                        } catch (e) { /* 忽略 */ }
+                    }
+                    themePicker.disabled = false;
+                    customThemeButton.disabled = false;
+                }
+            }
+            // 触发重渲染，让已用 mermaid.js 渲染的图表切换到 beautiful-mermaid
+            schedulePreviewUpdate();
+        });
 
         // 检测 MathJax 是否成功加载
         const mathJaxLoaded = typeof MathJax !== 'undefined';
@@ -602,6 +661,10 @@
         } else {
             console.log('✓ html2canvas 加载成功');
         }
+
+        // ===== beautiful-mermaid 支持的图表类型（统一常量，消除三处重复）=====
+        // 注意：'xyChart' 大写 C 与 detectDiagramType() 返回值一致
+        const BEAUTIFUL_MERMAID_SUPPORTED_TYPES = ['flowchart', 'sequence', 'class', 'er', 'state', 'xyChart'];
 
         // ===== 图表类型检测函数 =====
         /**
@@ -623,6 +686,7 @@
             if (trimmed.startsWith('mindmap')) return 'mindmap';
             if (trimmed.startsWith('timeline')) return 'timeline';
             if (trimmed.startsWith('sankey-beta')) return 'sankey';
+            if (trimmed.startsWith('radar-beta')) return 'radar';
             if (trimmed.startsWith('requirementdiagram')) return 'requirement';
             if (trimmed.startsWith('quadrantchart')) return 'quadrantChart';
             if (trimmed.startsWith('xychart-beta')) return 'xyChart';
@@ -632,6 +696,8 @@
             if (trimmed.startsWith('kanban')) return 'kanban';
             if (trimmed.startsWith('architecture-beta')) return 'architecture';
             if (trimmed.startsWith('c4context') || trimmed.startsWith('c4container') || trimmed.startsWith('c4component') || trimmed.startsWith('c4dynamic') || trimmed.startsWith('c4deployment')) return 'c4';
+            // frontmatter (---) 开头的代码块走 mermaid.js 降级
+            if (trimmed.startsWith('---')) return 'frontmatter';
             // 默认尝试作为 flowchart
             return 'flowchart';
         }
@@ -642,8 +708,8 @@
          */
         class ThemeManager {
             constructor() {
-                // beautiful-mermaid 支持的图表类型
-                this.supportedTypes = ['flowchart', 'state', 'sequence', 'class', 'er'];
+                // beautiful-mermaid 支持的图表类型（引用统一常量）
+                this.supportedTypes = BEAUTIFUL_MERMAID_SUPPORTED_TYPES;
 
                 // 加载当前主题
                 this.currentTheme = this.loadTheme();
@@ -745,8 +811,8 @@
             }
         }
 
-        // 初始化主题管理器
-        const themeManager = beautifulMermaidLoaded ? new ThemeManager() : null;
+        // 初始化主题管理器（ESM 异步加载后可能需要重新创建）
+        let themeManager = beautifulMermaidLoaded ? new ThemeManager() : null;
 
         // ===== 初始化主题选择器 =====
         if (beautifulMermaidLoaded && beautifulMermaid.THEMES) {
@@ -1913,9 +1979,8 @@
                             const currentOutputMode = outputMode.value;
                             const useAsciiMode = useAscii.checked;
 
-                            // beautiful-mermaid 支持的类型
-                            // 注意：当前 beautiful-mermaid 0.1.3 的状态图渲染可能有问题，暂时使用 mermaid.js
-                            const supportedTypes = ['flowchart', 'sequence', 'class', 'er']; // 'state' 暂时移除
+                            // beautiful-mermaid 支持的类型（引用统一常量）
+                            const supportedTypes = BEAUTIFUL_MERMAID_SUPPORTED_TYPES;
 
                             // 检查是否强制使用经典模式
                             const forceClassic = (currentOutputMode === 'classic');
@@ -1951,8 +2016,16 @@
                             } else {
                                 // 使用原生 Mermaid.js 渲染（经典模式 / Gantt / Pie / Journey 等）
                                 if (currentOutputMode === 'ascii') {
-                                    // mermaid.js 不支持 ASCII，显示提示
-                                    container.innerHTML = `<div class="error-message">ASCII 模式不支持 ${diagramType} 图表类型（仅支持 Flowchart, Sequence, Class, ER）</div>`;
+                                    // ASCII 降级：mermaid.js 不支持 ASCII，降级为 SVG + 提示标签
+                                    const renderId = `previewSvg-${segment.id}-${Date.now()}${Math.random().toString(16).slice(2)}`;
+                                    const { svg } = await mermaid.render(renderId, segment.content);
+                                    const hint = document.createElement('div');
+                                    hint.className = 'ascii-fallback-hint';
+                                    hint.textContent = t('asciiFallbackHint');
+                                    container.appendChild(hint);
+                                    const svgContainer = document.createElement('div');
+                                    svgContainer.innerHTML = svg;
+                                    container.appendChild(svgContainer);
                                 } else {
                                     // SVG 模式（包括 classic 模式）
                                     const renderId = `previewSvg-${segment.id}-${Date.now()}${Math.random().toString(16).slice(2)}`;
@@ -2125,9 +2198,8 @@
                 const currentTheme = themeManager ? themeManager.getCurrentTheme() : { bg: '#ffffff', fg: '#09090b' };
                 const currentOutputMode = outputMode.value;
 
-                // beautiful-mermaid 支持的类型
-                // 注意：当前 beautiful-mermaid 0.1.3 的状态图渲染可能有问题，暂时使用 mermaid.js
-                const supportedTypes = ['flowchart', 'sequence', 'class', 'er']; // 'state' 暂时移除
+                // beautiful-mermaid 支持的类型（引用统一常量）
+                const supportedTypes = BEAUTIFUL_MERMAID_SUPPORTED_TYPES;
 
                 let svg;
                 let bgColor = 'white';

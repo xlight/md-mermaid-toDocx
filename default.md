@@ -528,9 +528,9 @@ radar-beta
 ### 输出模式说明
 
 #### SVG (主题) - 默认模式
-- 为支持的图表应用自定义主题（Flowchart, Sequence, Class, ER）
+- 为支持的图表应用自定义主题（Flowchart, Sequence, Class, ER, State, XYChart）
 - 图表美观、专业，颜色可自定义
-- 不支持主题的图表（State, Gantt, Pie 等）使用原生 Mermaid.js 渲染
+- 不支持主题的图表（Gantt, Pie, Journey 等）使用原生 Mermaid.js 渲染
 
 #### ASCII (文本) - 终端友好
 - 将图表转换为纯文本格式，适合：
@@ -538,7 +538,7 @@ radar-beta
   - 聊天工具（Slack, Discord, 企业微信等）
   - 纯文本文档
 - 支持 Unicode 盒绘字符（`┌─┐│└┘`）和纯 ASCII 字符（`+-|`）
-- 仅支持：Flowchart, Sequence, Class, ER
+- 仅支持：Flowchart, Sequence, Class, ER, State, XYChart
 
 #### 经典 (兼容) - 完全兼容模式
 - **所有图表**强制使用原生 Mermaid.js 渲染
@@ -548,12 +548,10 @@ radar-beta
 
 ### 主题功能说明
 
-- **支持主题的图表**：Flowchart（流程图）、Sequence（时序图）、Class（类图）、ER（ER图）
-- **不支持主题的图表**：State（状态图）、Gantt（甘特图）、Pie（饼图）、Journey（用户旅程图）等使用原生 Mermaid.js 渲染
+- **支持主题的图表**：Flowchart（流程图）、Sequence（时序图）、Class（类图）、ER（ER图）、State（状态图）、XYChart（XY图表）
+- **不支持主题的图表**：Gantt（甘特图）、Pie（饼图）、Journey（用户旅程图）等使用原生 Mermaid.js 渲染
 - **主题持久化**：选择的主题会自动保存，下次打开页面时保持您的选择
 - **经典模式**：需要原生 Mermaid.js 样式时，切换到"经典 (兼容)"输出模式
-
-> **注意**：状态图暂时使用原生 Mermaid.js 渲染（beautiful-mermaid 0.1.3 版本的状态图支持存在问题，待库更新后将启用主题支持）
 
 ## 字体建议
 

@@ -44,6 +44,8 @@
 
 但由于使用了 ES 模块和 Fetch API，完整体验需要通过 HTTP 服务器运行：
 
+> 💡 **注意**：beautiful-mermaid 1.1.3 通过 ES Module 加载（esm.sh），`file://` 协议下无法使用主题功能（自动降级为原生 Mermaid.js）。请使用 HTTP 服务器获得完整主题能力。
+
 ```bash
 # 使用 Python
 python -m http.server 8000
@@ -84,7 +86,8 @@ php -S localhost:8000
 - ✅ **时序图** (Sequence Diagram)
 - ✅ **类图** (Class Diagram)
 - ✅ **ER 图** (ER Diagram)
-- ⚠️ **状态图** (State Diagram) - 当前版本暂时使用原生 Mermaid.js 渲染（beautiful-mermaid 0.1.3 的状态图支持存在问题）
+- ✅ **状态图** (State Diagram)
+- ✅ **XY 图表** (XYChart)
 
 #### 主题功能
 - **15+ 内置主题**：Tokyo Night, Catppuccin, Nord, Dracula, GitHub Dark/Light 等
@@ -100,7 +103,7 @@ php -S localhost:8000
 应用提供三种输出模式，可通过工具栏"输出"下拉菜单切换：
 
 #### 1. SVG (主题) - 默认模式
-- 使用 beautiful-mermaid 渲染支持的图表类型（Flowchart, Sequence, Class, ER）
+- 使用 beautiful-mermaid 渲染支持的图表类型（Flowchart, Sequence, Class, ER, State, XYChart）
 - 应用选中的主题颜色
 - 图表美观、专业
 - 支持所有主题功能
@@ -150,9 +153,10 @@ graph TD
 - ✅ **时序图**：`sequenceDiagram`
 - ✅ **类图**：`classDiagram`
 - ✅ **ER 图**：`erDiagram`
+- ✅ **状态图**：`stateDiagram` / `stateDiagram-v2`
+- ✅ **XY 图表**：`xychart-beta` 🔥
 
 #### 原生 Mermaid.js 引擎（保持默认样式）
-- **状态图**：`stateDiagram` / `stateDiagram-v2` (暂时使用原生渲染)
 - **甘特图**：`gantt`
 - **饼图**：`pie`
 - **用户旅程图**：`journey`
@@ -161,7 +165,6 @@ graph TD
 - **时间线**：`timeline`
 - **象限图**：`quadrantChart`
 - **需求图**：`requirementDiagram`
-- **XY 图表**：`xychart-beta` 🔥
 - **桑基图**：`sankey-beta` 🔥
 - **块图**：`block-beta` 🔥
 - **ZenUML**：`zenuml` 🔥

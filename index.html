@@ -30,8 +30,15 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
     <!-- CDN Scripts -->
-    <script src="https://unpkg.com/mermaid@11.12.2/dist/mermaid.min.js"></script>
-    <script src="https://unpkg.com/beautiful-mermaid@0.1.3/dist/beautiful-mermaid.browser.global.js"></script>
+    <script src="https://unpkg.com/mermaid@11.15.0/dist/mermaid.min.js"></script>
+    <!-- beautiful-mermaid 1.1.3: 必须用 esm.sh（unpkg 的 dist/index.js 内部 import "entities" 无法被浏览器解析）
+         ESM 异步加载，完成后 dispatchEvent 通知 app.js 重渲染。file:// 协议不支持，需本地 HTTP 服务器。 -->
+    <script type="module">
+        import * as beautifulMermaid from 'https://esm.sh/beautiful-mermaid@1.1.3';
+        window.beautifulMermaid = beautifulMermaid;
+        window.dispatchEvent(new CustomEvent('beautiful-mermaid-loaded'));
+    </script>
+    <!-- 备选 CDN: https://cdn.jsdelivr.net/npm/beautiful-mermaid@1.1.3/dist/index.js（需配合 importmap 解析 entities） -->
     <script src="https://unpkg.com/docx@9.5.0/dist/index.iife.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="https://unpkg.com/marked@15.0.2/marked.min.js"></script>
@@ -272,9 +279,9 @@
                     <div class="toolbar-group">
                         <label for="outputMode" data-i18n="outputModeLabel">输出:</label>
                         <select id="outputMode">
-                            <option value="svg">SVG (主题)</option>
+                            <option value="svg" selected>混合 (推荐)</option>
                             <option value="ascii">ASCII (文本)</option>
-                            <option value="classic" selected>经典 (兼容)</option>
+                            <option value="classic">经典 (兼容)</option>
                         </select>
                     </div>
                     <label id="asciiCharsetLabel" style="display:none; margin-top: 10px;">
@@ -285,7 +292,7 @@
                     <div class="output-mode-help" style="margin-top: 15px;">
                         <h4 data-i18n="outputModeHelpTitle">输出模式说明：</h4>
                         <ul>
-                            <li><strong>SVG (主题)</strong>: <span data-i18n="svgModeDesc">应用主题到支持的图表，其他图表使用原生样式</span></li>
+                            <li><strong>混合 (推荐)</strong>: <span data-i18n="svgModeDesc">4种图表使用精美主题，其他图表使用原生样式</span></li>
                             <li><strong>ASCII (文本)</strong>: <span data-i18n="asciiModeDesc">将图表转换为纯文本格式，适合终端和聊天工具</span></li>
                             <li><strong>经典 (兼容)</strong>: <span data-i18n="classicModeDesc">所有图表使用原生 Mermaid.js 渲染，最大兼容性</span></li>
                         </ul>

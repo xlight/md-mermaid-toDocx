@@ -136,7 +136,7 @@ statusDiv.textContent = t('myKey');
 
 所有库通过 CDN 加载（unpkg.com）：
 - **Mermaid.js** v11.12.2：图表渲染
-- **beautiful-mermaid** v0.1.3：主题化渲染
+- **beautiful-mermaid** v1.1.3：主题化渲染（ESM 通过 esm.sh 加载）
 - **Marked.js** v15.0.12：Markdown 解析
 - **MathJax** v3：数学公式渲染
 - **html2canvas** v1.4.1：Mermaid/HTML 截图导出（保留用于其他场景）
@@ -169,7 +169,7 @@ statusDiv.textContent = t('myKey');
 ## 重要实现细节
 
 ### 图表渲染策略
-1. **beautiful-mermaid**：支持主题的图表（Flowchart、Sequence、Class、ER）
+1. **beautiful-mermaid**：支持主题的图表（Flowchart、Sequence、Class、ER、State、XYChart）
 2. **原生 Mermaid.js**：其他图表类型（Gantt、Pie、Journey 等）
 
 ### 数学公式渲染策略
