@@ -172,6 +172,13 @@ statusDiv.textContent = t('myKey');
 1. **beautiful-mermaid**：支持主题的图表（Flowchart、Sequence、Class、ER、State、XYChart）
 2. **原生 Mermaid.js**：其他图表类型（Gantt、Pie、Journey 等）
 
+### mermaid.js 主题动态派生
+- `bmThemeToMermaidVariables(bmTheme)` 函数从 beautiful-mermaid 主题对象 `{bg, fg, line?, accent?, muted?, surface?, border?}` 动态派生 mermaid.js 的 `themeVariables`
+- 派生算法基于 HSL 色相旋转 + 亮度自适应，根据主题深浅生成浅底深字或深底浅字
+- 主题切换时（`themePicker.change`/`applyThemeButton.click`/`saveCustomThemeButton.click`）重新调用 `mermaid.initialize` 更新 themeVariables
+- `generateThemeCSS(bmTheme)` 函数动态生成 `themeCSS`（`.taskText`/`.pieTitleText` 等）
+- DOCX 导出（`renderMermaidToPng`）的 PNG 背景色从主题 `bg` 派生，不再硬编码 white
+
 ### 数学公式渲染策略
 1. **MathJax v3**：渲染 LaTeX 数学公式
 2. **行内公式**：`$...$` 语法，通过 Marked.js 扩展实现
