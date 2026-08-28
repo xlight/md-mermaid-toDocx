@@ -54,3 +54,4 @@ build/
 *.temp
 .cache/
 .sisyphus/
+.playwright-mcp/

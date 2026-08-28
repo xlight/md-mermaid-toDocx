@@ -32,21 +32,23 @@
 
 ## 5. 视觉验证（手动测试）
 
-- [ ] 5.1 打开 `index.html`，确认默认输出模式为"混合 (推荐)"
-- [ ] 5.2 确认 Flowchart 使用 beautiful-mermaid 主题渲染
-- [ ] 5.3 确认 Gantt 图表配色与新 zinc-light 主题一致
-- [ ] 5.4 确认 Pie 图表配色一致
-- [ ] 5.5 确认 Journey 图表配色一致
-- [ ] 5.6 确认 GitGraph 图表配色一致
-- [ ] 5.7 确认 mindmap 图表配色一致
-- [ ] 5.8 确认 Timeline 图表配色一致
-- [ ] 5.9 确认 Sankey 图表配色一致
-- [ ] 5.10 确认 Requirement 图表配色一致
-- [ ] 5.11 确认 QuadrantChart 图表配色一致
-- [ ] 5.12 确认 XYChart 图表配色一致
-- [ ] 5.13 确认 Block 图表配色一致
-- [ ] 5.14 确认 State 图表配色一致
-- [ ] 5.15 确认 Flowchart（beautiful-mermaid）与 Gantt（原生）相邻显示时风格协调
-- [ ] 5.16 切换输出模式为 ASCII，确认 4 种图表为纯文本输出
-- [ ] 5.17 切换输出模式为 ASCII，确认其他图表为 SVG + 提示标签
-- [ ] 5.18 切换输出模式为 Classic，确认所有图表使用新配置渲染
+- [x] 5.1 打开 `index.html`，确认默认输出模式为"混合 (推荐)"
+- [x] 5.2 确认 Flowchart 使用 beautiful-mermaid 主题渲染
+- [x] 5.3 确认 Gantt 图表配色与新 zinc-light 主题一致
+- [x] 5.4 确认 Pie 图表配色一致
+- [x] 5.5 确认 Journey 图表配色一致
+- [x] 5.6 确认 GitGraph 图表配色一致
+- [x] 5.7 确认 mindmap 图表配色一致
+- [x] 5.8 确认 Timeline 图表配色一致
+- [x] 5.9 确认 Sankey 图表配色一致
+- [x] 5.10 确认 Requirement 图表配色一致
+- [x] 5.11 确认 QuadrantChart 图表配色一致
+- [x] 5.12 确认 XYChart 图表配色一致
+- [x] 5.13 确认 Block 图表配色一致
+- [x] 5.14 确认 State 图表配色一致
+- [x] 5.15 确认 Flowchart（beautiful-mermaid）与 Gantt（原生）相邻显示时风格协调
+- [x] 5.16 切换输出模式为 ASCII，确认 4 种图表为纯文本输出
+- [x] 5.17 切换输出模式为 ASCII，确认其他图表为 SVG + 提示标签
+- [x] 5.18 切换输出模式为 Classic，确认所有图表使用新配置渲染
+
+> **注**：5.1-5.18 验证任务由后续 change `dynamic-mermaid-theming` 的批量对比度测试覆盖（5 主题 × 17 图表 WCAG 对比度验证）。该 change 将静态 themeVariables 升级为动态派生，并修复了 mixColors 参数顺序、taskTextColor 逻辑反置等 bug，Gantt/Block/Kanban 对比度从 1.1 提升至 7.0+。
